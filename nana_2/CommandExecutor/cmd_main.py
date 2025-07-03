@@ -1,7 +1,7 @@
 # CommandExecutor/cmd_main.py
 import os
 import importlib
-
+from global_config import settings
 
 class CommandExecutor:
     """
@@ -24,7 +24,7 @@ class CommandExecutor:
         # 获取项目的根目录(nana_2)的路径
         project_root = os.path.dirname(command_executor_dir)
          # 拼接出plugins文件夹的绝对路径
-        plugins_dir = os.path.join(project_root, 'plugins')
+        plugins_dir = settings.PLUGINS_DIR
         print(f"[执行器] 正在从 '{plugins_dir}' 目录加载插件...")
 
         # 遍历 plugins 文件夹下的所有子文件夹

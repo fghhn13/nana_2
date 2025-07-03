@@ -40,7 +40,7 @@ class MainDetector:
         # print(f"[检测器] 经过解析器处理后的干净指令: {clean_command}")
 
         # 在“参谋部”建好之前，我们先直接把原始指令当作最终结果返回
-        final_command = raw_command_from_ai
+        final_command = clean_command
 
         print("[检测器] 意图检测流程完成。")
         return final_command

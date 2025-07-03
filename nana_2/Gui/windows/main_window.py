@@ -5,7 +5,7 @@ import queue
 from tkinter import messagebox, DISABLED, NORMAL, END
 from ..config import gui_config
 from ..handle import event_handlers
-
+from global_config import settings
 
 class MainWindow:
     def __init__(self, master: tk.Tk, app_controller):
@@ -14,6 +14,7 @@ class MainWindow:
         :param master: tk.Tk() 的根实例
         :param app_controller: 主应用程序的控制器实例，用于通信
         """
+        self.config = settings
         self.master = master
         self.controller = app_controller  # 外部逻辑通信的桥梁
         self.config = gui_config # 加载UI配置
