@@ -1,5 +1,4 @@
 # /nana_2/global_config/settings.py
-
 import os
 
 # ==================== 核心：项目的绝对根路径 ====================
@@ -26,11 +25,13 @@ IMAGES_DIR = os.path.join(ASSETS_DIR, 'images')
 PLUGINS_DIR = os.path.join(ROOT_DIR, 'plugins')
 
 # --- 日志路径 ---
-LOG_DIR = os.path.join(ROOT_DIR, 'logs') # 建议一个顶级的日志文件夹
+LOG_DIR = os.path.join(ROOT_DIR, 'core', 'log')
+# --- 日志格式 ---
+
 
 # --- AI 相关路径 ---
 INTENT_DETECTOR_DIR = os.path.join(ROOT_DIR, 'IntentDetector')
-PROMPTS_FILE = os.path.join(INTENT_DETECTOR_DIR, 'prompts.json') # 假设prompts.json会放在这里
+PROMPTS_FILE = os.path.join(INTENT_DETECTOR_DIR, 'ai_service','prompts.json')
 
 # ==================== 具体的资源文件路径 ====================
 IMG_SEND_NORMAL = os.path.join(IMAGES_DIR, "button_normal.png")

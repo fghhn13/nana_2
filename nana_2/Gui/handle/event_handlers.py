@@ -1,5 +1,5 @@
 # Gui/handle/event_handlers.py
-
+from core.log.logger_config import logger
 from tkinter import END
 from ..config import gui_config
 
@@ -20,7 +20,7 @@ class EventHandler:
         if not user_text or user_text == self.placeholder_text:
             return "break"  # 阻止事件继续传播
 
-        print(f"捕获到用户输入: {user_text}")
+        logger.info(f"捕获到用户输入: {user_text}")
 
         # 清空输入框
         self.view.user_input_entry.delete(0, END)

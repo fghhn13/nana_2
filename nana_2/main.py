@@ -14,7 +14,7 @@ if project_root not in sys.path:
 # 现在Python的“通讯录”里已经有了我们项目的地址，下面的导入将万无一失
 # =============================================================
 
-
+from core.log.logger_config import logger
 import tkinter as tk
 import threading
 from Gui.windows.main_window import MainWindow
@@ -36,9 +36,15 @@ class AppController:
         # 【注意】这里的导入现在会因为上面的 sys.path 修改而正常工作
         from IntentDetector.main_detector import MainDetector
         from CommandExecutor.cmd_main import CommandExecutor
-        self.detector = MainDetector()
+        # 1. 首先，创建“命令执行器”实例，它会立刻加载所有插件
         self.executor = CommandExecutor()
-        self.conversation_history = []  # 在这里管理完整的对话历史
+
+        # 2. 然后，创建“意图检测器”实例，并把刚才创建的执行器“注入”给它
+        self.detector = MainDetector(command_executor=self.executor)
+
+        # --- 接线完成！现在它们俩已经成功关联啦！---
+
+        self.conversation_history = []
 
     def set_view(self, view: MainWindow):
         """让控制器能够访问到GUI实例，以便操作UI队列。"""
@@ -72,7 +78,7 @@ class AppController:
 
     def on_app_exit(self):
         """当GUI关闭时被调用"""
-        print("[总司令] 收到关闭信号，应用即将退出。")
+        logger.info("[总司令] 收到关闭信号，应用即将退出。")
 
 
 # --- 程序主入口 ---

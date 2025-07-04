@@ -1,36 +1,34 @@
-# config/logger_config.py
+# 我看到的内容
 import logging
+from logging.handlers import RotatingFileHandler
+from global_config.settings import LOG_DIR
 import os
-from .app_config import ROOT_DIR
 
-def setup_logger():
-    """配置并返回一个日志记录器"""
-    log_file_path = os.path.join(ROOT_DIR, 'nana_log.txt')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
 
-    # 创建一个日志记录器
-    logger = logging.getLogger('NanaLogger')
-    logger.setLevel(logging.INFO)
+# 定义日志文件的路径
+LOG_FILE_PATH = os.path.join(LOG_DIR, 'nana.log')
 
-    # 防止重复添加处理器
-    if not logger.handlers:
-        # 创建一个文件处理器，用于写入日志文件
-        file_handler = logging.FileHandler(log_file_path, encoding='utf-8')
-        file_handler.setLevel(logging.INFO)
 
-        # 创建一个控制台处理器，用于在终端打印日志（方便调试）
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
+# 创建一个logger
+logger = logging.getLogger('nana_logger')
+logger.setLevel(logging.INFO)
 
-        # 定义日志格式
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-        console_handler.setFormatter(formatter)
+# 创建文件处理器
+file_handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=1024 * 1024 * 5, backupCount=5, encoding='utf-8')
+file_handler.setLevel(logging.INFO)
 
-        # 将处理器添加到日志记录器
-        logger.addHandler(file_handler)
-        logger.addHandler(console_handler)
+# 创建控制台处理器
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
 
-    return logger
+# 设置日志格式
+formatter = logging.Formatter('%(asctime)s - %(name)s - [%(levelname)s] - %(module)s.%(funcName)s:%(lineno)d - %(message)s')
+file_handler.setFormatter(formatter)
+stream_handler.setFormatter(formatter)
 
-# 创建一个全局日志实例
-logger = setup_logger()
+# 添加处理器到logger
+if not logger.handlers:
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)

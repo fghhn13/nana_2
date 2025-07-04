@@ -2,6 +2,7 @@
 import os
 import importlib
 from global_config import settings
+from core.log.logger_config import logger
 
 class CommandExecutor:
     """
@@ -25,12 +26,11 @@ class CommandExecutor:
         project_root = os.path.dirname(command_executor_dir)
          # 拼接出plugins文件夹的绝对路径
         plugins_dir = settings.PLUGINS_DIR
-        print(f"[执行器] 正在从 '{plugins_dir}' 目录加载插件...")
+        logger.info(f"[执行器] 正在从 '{plugins_dir}' 目录加载插件...")
 
         # 遍历 plugins 文件夹下的所有子文件夹
         for plugin_name in os.listdir(plugins_dir):
             plugin_path = os.path.join(plugins_dir, plugin_name)
-            # 确保它是一个文件夹，并且不是以 __ 开头的（比如__pycache__）
             if os.path.isdir(plugin_path) and not plugin_name.startswith('__'):
                 try:
                     # 动态导入插件模块，例如: importlib.import_module("plugins.note_taker")
@@ -38,9 +38,17 @@ class CommandExecutor:
                     if hasattr(module, 'get_plugin'):
                         plugin_instance = module.get_plugin()
                         self.plugins[plugin_instance.get_name()] = plugin_instance
-                        print(f"  - 成功加载插件: '{plugin_instance.get_name()}'")
+                        logger.info(f"  - 成功加载插件: '{plugin_instance.get_name()}'")
                 except Exception as e:
-                    print(f"  - 加载插件 {plugin_name} 失败: {e}")
+                    logger.info(f"  - 加载插件 {plugin_name} 失败: {e}")
+
+    @property
+    def loaded_plugins(self) -> dict:
+        """
+        一个公开的属性，让外部可以获取到所有已加载的插件。
+        就像一个透明的展示柜，展示着所有可用的工具。
+        """
+        return self.plugins
 
     def execute_command(self, command: dict, controller):
         """
@@ -50,23 +58,28 @@ class CommandExecutor:
 
         if not plugin_name:
             # 如果指令没有指定插件，说明可能是一条纯聊天或无需执行的消息
-            print(f"[执行器] 收到无需执行的指令。")
+            logger.info(f"[执行器] 收到无需执行的指令。")
             return
 
-        print(f"[执行器] 收到指令，需要插件 '{plugin_name}' 来执行。")
+        logger.info(f"[执行器] 收到指令，需要插件 '{plugin_name}' 来执行。")
 
         if plugin_name in self.plugins:
-            # 找到了对应的插件，让它执行
-            plugin = self.plugins[plugin_name]
-            # 把指令里的 command 和 args 交给插件
-            plugin.execute(
-                command.get('command'),
-                command.get('args', {}),
-                controller
-                # 使用 .get 提供默认空字典，更安全
-                # 我们还需要把主控制器传给插件，以便插件能和GUI通信
-                # 这个我们下一步再完善
-            )
+            # # 找到了对应的插件，让它执行
+            # plugin = self.plugins[plugin_name]
+            # # 把指令里的 command 和 args 交给插件
+            # plugin.execute(
+            #     command.get('command'),
+            #     command.get('args', {}),
+            #     controller
+            #   测试阶段先不进行真正的操作
+            # )
+            cmd_name = command.get('command')
+            cmd_args = command.get('args', {})
+            logger.info(f"====== [执行器-模拟模式] ======")
+            logger.info(f"  - 插件: {plugin_name}")
+            logger.info(f"  - 命令: {cmd_name}")
+            logger.info(f"  - 参数: {cmd_args}")
+            logger.info(f"==============================")
         else:
-            print(f"[执行器] 错误：找不到名为 '{plugin_name}' 的插件。")
+            logger.info(f"[执行器] 错误：找不到名为 '{plugin_name}' 的插件。")
             # 这里可以向GUI发送一个错误消息
