@@ -1,6 +1,7 @@
 # plugins/test_plugin/__init__.py
 
 from ..base_plugin import BasePlugin
+from core.log.logger_config import logger
 
 
 class TestPlugin(BasePlugin):
@@ -20,7 +21,7 @@ class TestPlugin(BasePlugin):
         """
         执行插件的核心逻辑。
         """
-        print(f"\n✅ [插件链路] 'test_plugin' 已被成功调用！执行命令: {command}, 参数: {args}\n")
+        logger.info(f"\n✅ [插件链路] 'test_plugin' 已被成功调用！执行命令: {command}, 参数: {args}\n")
 
         # 通过控制器，向GUI的消息队列发送一条“任务完成”的消息
         feedback_msg = ("测试插件", f"我被成功执行啦！收到的命令是'{command}'。", "nana_sender")
