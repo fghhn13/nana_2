@@ -26,6 +26,10 @@ class AIService:
         # 调用和定义的方法名保持一致！
         self._load_main_prompts()
 
+    def rebuild_prompts(self):
+        """Reload main prompt configuration from disk."""
+        self._load_main_prompts()
+
     def _load_main_prompts(self):
         """只加载“主教科书”"""
         try:
