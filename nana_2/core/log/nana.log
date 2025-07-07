@@ -1,0 +1,45 @@
+2025-07-03 16:42:04,721 - nana_logger - [INFO] - main_detector.__init__:21 - [检测器] 意图检测器已初始化。
+2025-07-03 16:42:04,721 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+2025-07-03 16:42:04,723 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+2025-07-03 16:42:07,426 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111
+2025-07-03 16:42:07,428 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...
+2025-07-03 16:42:07,428 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...
+2025-07-03 16:42:07,429 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。
+2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。
+2025-07-03 16:42:07,429 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。
+2025-07-03 16:42:08,993 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 222
+2025-07-03 16:42:08,994 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...
+2025-07-03 16:42:08,994 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...
+2025-07-03 16:42:08,995 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。
+2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+2025-07-03 16:42:08,996 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。
+2025-07-03 16:42:08,996 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。
+2025-07-03 16:42:12,865 - nana_logger - [INFO] - main.on_app_exit:75 - [总司令] 收到关闭信号，应用即将退出。
+2025-07-04 18:02:49,232 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+2025-07-04 18:02:49,238 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+2025-07-04 18:04:54,701 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+2025-07-04 18:04:54,703 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+2025-07-04 18:04:55,240 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\IntentDetector\\ai_service\\prompts.json'
+2025-07-04 18:04:55,241 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
+2025-07-04 18:05:02,522 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111、
+2025-07-04 18:05:02,523 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+2025-07-04 18:05:02,523 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+2025-07-04 18:05:02,526 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+2025-07-04 18:05:11,086 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁
+2025-07-04 18:05:11,087 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+2025-07-04 18:05:11,088 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+2025-07-04 18:05:11,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+2025-07-04 18:05:11,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+2025-07-04 18:05:11,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+2025-07-04 18:05:25,316 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: ？
+2025-07-04 18:05:25,317 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+2025-07-04 18:05:25,317 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+2025-07-04 18:05:25,318 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+2025-07-04 18:05:27,689 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
