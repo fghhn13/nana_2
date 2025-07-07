@@ -3,8 +3,8 @@ import os
 import sys
 
 # --- 配置 ---
-# 我们假设这个脚本在项目根目录运行，日志文件也在根目录
-LOG_FILE_NAME = "nana_log.txt"
+# 我们统一日志文件名称为 nana.log，文件位于与本脚本相同的目录
+LOG_FILE_NAME = "nana.log"
 
 def clear_log_file():
     """
