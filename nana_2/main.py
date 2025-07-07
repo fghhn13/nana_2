@@ -15,7 +15,7 @@ if project_root not in sys.path:
 # =============================================================
 
 from core.log.logger_config import logger
-import tkinter as tk
+from PySide6.QtWidgets import QApplication
 import threading
 from Gui.windows.main_window import MainWindow
 from IntentDetector.main_detector import MainDetector
@@ -94,9 +94,9 @@ if __name__ == "__main__":
     # 我们把原来在顶部的 import 移到这里来
     from Gui.windows.main_window import MainWindow
 
-    root = tk.Tk()
+    app = QApplication(sys.argv)
     controller = AppController()
-    main_view = MainWindow(root, controller)
+    main_view = MainWindow(controller)
     controller.set_view(main_view)
 
     # 删除了原来的 controller.start_app()，因为AppController的__init__里并没有这个方法
@@ -104,4 +104,5 @@ if __name__ == "__main__":
     # 在这里，我们让MainWindow的初始化去触发start_app
     main_view.master.after(100, controller.start_app)
 
-    root.mainloop()
+    main_view.show()
+    sys.exit(app.exec())

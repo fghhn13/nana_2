@@ -8,14 +8,13 @@ from ..handle import event_handlers
 from global_config import settings
 
 class MainWindow:
-    def __init__(self, master: tk.Tk, app_controller):
+    def __init__(self, app_controller):
         """
         主窗口的构造函数
-        :param master: tk.Tk() 的根实例
         :param app_controller: 主应用程序的控制器实例，用于通信
         """
         self.settings = settings
-        self.master = master
+        self.master = tk.Tk()
         self.controller = app_controller  # 外部逻辑通信的桥梁
         self.gui_config = gui_config  # 加载UI配置
         self.note_listbox = None
@@ -137,3 +136,7 @@ class MainWindow:
         self.is_running = False
         self.controller.on_app_exit()  # 通知控制器应用要退出了
         self.master.destroy()
+
+    def show(self):
+        """显示窗口并进入事件循环。"""
+        self.master.mainloop()
