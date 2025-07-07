@@ -11,6 +11,7 @@ from ..config import gui_config
 from ..handle import event_handlers
 from global_config import settings
 
+
 class MainWindow(QMainWindow):
     def __init__(self, app_controller):
         """主窗口构造函数"""
@@ -19,6 +20,7 @@ class MainWindow(QMainWindow):
         self.settings = settings
         self.controller = app_controller
         self.gui_config = gui_config
+
 
         self.note_listbox = None
 
@@ -137,8 +139,10 @@ class MainWindow(QMainWindow):
     def on_closing(self):
 
         self.is_running = False
+
         self.controller.on_app_exit()
 
     def closeEvent(self, event):
         self.on_closing()
         event.accept()
+
