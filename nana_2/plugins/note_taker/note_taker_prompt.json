@@ -1,0 +1,27 @@
+{
+  "description": "【记事本插件】功能：可以创建、读取、删除文本笔记。",
+  "examples": [
+    {
+      "user": "帮我新建一个笔记，名字叫'会议纪要'",
+      "ai": {
+        "plugin": "note_taker",
+        "command": "create_note",
+        "args": {
+          "title": "会议纪要"
+        },
+        "response": "好的，正在为你创建名为'会议纪要'的新笔记。"
+      }
+    },
+    {
+      "user": "我想看看'购物清单'这个笔记写了什么",
+      "ai": {
+        "plugin": "note_taker",
+        "command": "read_note",
+        "args": {
+          "title": "购物清单"
+        },
+        "response": "收到，正在查找'购物清单'的内容。"
+      }
+    }
+  ]
+}
