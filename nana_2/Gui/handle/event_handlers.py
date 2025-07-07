@@ -1,14 +1,14 @@
 # Gui/handle/event_handlers.py
 from core.log.logger_config import logger
 from tkinter import END
-from ..config import gui_config
+
 
 class EventHandler:
     def __init__(self, main_view, controller):
 
         self.view = main_view
         self.controller = controller
-        self.placeholder_text = self.view.config.INPUT_PLACEHOLDER
+        self.placeholder_text = self.view.gui_config.INPUT_PLACEHOLDER
 
     def on_send_click(self, event=None):
         """
@@ -106,7 +106,7 @@ class EventHandler:
     def remove_placeholder(self):
         """移除占位提示文本"""
         self.view.user_input_entry.delete(0, 'end')
-        self.view.user_input_entry.config(fg=self.view.config.FG_TEXT)  # 恢复正常的文字颜色
+        self.view.user_input_entry.config(fg=self.view.gui_config.FG_TEXT)  # 恢复正常的文字颜色
 
     def on_entry_focus_in(self, event):
         """当输入框获得焦点时触发"""
