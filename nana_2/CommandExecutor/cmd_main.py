@@ -69,22 +69,18 @@ class CommandExecutor:
         logger.info(f"[执行器] 收到指令，需要插件 '{plugin_name}' 来执行。")
 
         if plugin_name in self.plugins:
-            # # 找到了对应的插件，让它执行
-            # plugin = self.plugins[plugin_name]
-            # # 把指令里的 command 和 args 交给插件
-            # plugin.execute(
-            #     command.get('command'),
-            #     command.get('args', {}),
-            #     controller
-            #   测试阶段先不进行真正的操作
-            # )
+            plugin = self.plugins[plugin_name]
             cmd_name = command.get('command')
             cmd_args = command.get('args', {})
-            logger.info(f"====== [执行器-模拟模式] ======")
-            logger.info(f"  - 插件: {plugin_name}")
-            logger.info(f"  - 命令: {cmd_name}")
-            logger.info(f"  - 参数: {cmd_args}")
-            logger.info(f"==============================")
+            logger.info(
+                f"[执行器] 调用插件 '{plugin_name}' 执行命令 '{cmd_name}'，参数: {cmd_args}"
+            )
+            try:
+                plugin.execute(cmd_name, cmd_args, controller)
+            except Exception as e:
+                logger.error(
+                    f"[执行器] 插件 '{plugin_name}' 执行命令 '{cmd_name}' 失败: {e}",
+                    exc_info=True,
+                )
         else:
             logger.info(f"[执行器] 错误：找不到名为 '{plugin_name}' 的插件。")
-            # 这里可以向GUI发送一个错误消息
