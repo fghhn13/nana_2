@@ -14,6 +14,11 @@ class CommandExecutor:
         self.plugins = {}
         self._load_plugins()
 
+    def refresh_commands(self):
+        """Reload all plugin modules to refresh available commands."""
+        self.plugins = {}
+        self._load_plugins()
+
     def _load_plugins(self):
         """
         动态加载所有在 a/nana_2.0/plugins/ 文件夹里的插件。
