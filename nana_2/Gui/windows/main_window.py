@@ -14,23 +14,23 @@ class MainWindow:
         :param master: tk.Tk() 的根实例
         :param app_controller: 主应用程序的控制器实例，用于通信
         """
-        self.config = settings
+        self.settings = settings
         self.master = master
         self.controller = app_controller  # 外部逻辑通信的桥梁
-        self.config = gui_config # 加载UI配置
+        self.gui_config = gui_config  # 加载UI配置
         self.note_listbox = None
         try:
             # 使用 gui_config 中的路径
-            self.img_send_normal = tk.PhotoImage(file=self.config.IMG_SEND_NORMAL)
-            self.img_send_hover = tk.PhotoImage(file=self.config.IMG_SEND_HOVER)
-            self.img_send_press = tk.PhotoImage(file=self.config.IMG_SEND_PRESS)
+            self.img_send_normal = tk.PhotoImage(file=self.gui_config.IMG_SEND_NORMAL)
+            self.img_send_hover = tk.PhotoImage(file=self.gui_config.IMG_SEND_HOVER)
+            self.img_send_press = tk.PhotoImage(file=self.gui_config.IMG_SEND_PRESS)
         except FileNotFoundError as e:
             messagebox.showerror("资源错误", f"找不到按钮图片文件！\n{e}")
             self.img_send_normal = None
         # --- 1. 基础窗口设置 ---
-        self.master.title(self.config.APP_TITLE)
+        self.master.title(self.gui_config.APP_TITLE)
         self.master.geometry("1100x800")
-        self.master.config(bg=self.config.BG_MAIN)
+        self.master.config(bg=self.gui_config.BG_MAIN)
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # --- 2. 状态与通信 ---
@@ -54,35 +54,35 @@ class MainWindow:
     def _create_widgets(self):
 
 
-        chat_frame = tk.Frame(self.master, bg=self.config.BG_MAIN)
+        chat_frame = tk.Frame(self.master, bg=self.gui_config.BG_MAIN)
         chat_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         chat_frame.rowconfigure(0, weight=1)
         chat_frame.columnconfigure(0, weight=1)
         self.chat_display = tk.Text(
             chat_frame, wrap=tk.WORD, state=DISABLED,
-            font=(self.config.GENERAL_FONT_FAMILY, self.config.GENERAL_FONT_SIZE),
-            bg=self.config.BG_INPUT, fg=self.config.FG_TEXT, insertbackground=self.config.CURSOR_COLOR, bd=0
+            font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE),
+            bg=self.gui_config.BG_INPUT, fg=self.gui_config.FG_TEXT, insertbackground=self.gui_config.CURSOR_COLOR, bd=0
         )
         self.chat_display.grid(row=0, column=0, sticky="nsew", pady=(0, 24))
         self.chat_display.tag_config("user_sender", foreground="#81C784",
-                                     font=(self.config.GENERAL_FONT_FAMILY, self.config.GENERAL_FONT_SIZE, "bold"))
+                                     font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE, "bold"))
         self.chat_display.tag_config("nana_sender", foreground="#82AAFF",
-                                     font=(self.config.GENERAL_FONT_FAMILY, self.config.GENERAL_FONT_SIZE, "bold"))
+                                     font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE, "bold"))
         self.chat_display.tag_config("error_sender", foreground="#FF5370",
-                                     font=(self.config.GENERAL_FONT_FAMILY, self.config.GENERAL_FONT_SIZE, "bold"))
+                                     font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE, "bold"))
 
-        input_frame = tk.Frame(chat_frame, bg=self.config.BG_MAIN)
+        input_frame = tk.Frame(chat_frame, bg=self.gui_config.BG_MAIN)
         input_frame.grid(row=1, column=0, sticky="ew")
         input_frame.columnconfigure(0, weight=1)
 
         self.user_input_entry = tk.Entry(
             input_frame,
-            font=(self.config.GENERAL_FONT_FAMILY, self.config.GENERAL_FONT_SIZE),
-            bg=self.config.BG_INPUT,
-            fg=self.config.FG_TEXT,
-            disabledbackground=self.config.BG_INPUT_DISABLED,
-            disabledforeground=self.config.FG_TEXT_DISABLED,
-            insertbackground=self.config.CURSOR_COLOR,
+            font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE),
+            bg=self.gui_config.BG_INPUT,
+            fg=self.gui_config.FG_TEXT,
+            disabledbackground=self.gui_config.BG_INPUT_DISABLED,
+            disabledforeground=self.gui_config.FG_TEXT_DISABLED,
+            insertbackground=self.gui_config.CURSOR_COLOR,
             bd=0,
             relief=tk.FLAT
         )
@@ -90,8 +90,8 @@ class MainWindow:
 
         if self.img_send_normal:
             self.send_button = tk.Button(
-                input_frame, image=self.img_send_normal, command=self.handler.on_send_click, bg=self.config.BG_MAIN,
-                activebackground=self.config.BG_MAIN, relief=tk.FLAT, bd=0, cursor="hand2"
+                input_frame, image=self.img_send_normal, command=self.handler.on_send_click, bg=self.gui_config.BG_MAIN,
+                activebackground=self.gui_config.BG_MAIN, relief=tk.FLAT, bd=0, cursor="hand2"
             )
         else:
             self.send_button = tk.Button(input_frame, text="发送", command=self.handler.on_send_click)
