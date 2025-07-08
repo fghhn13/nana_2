@@ -1,0 +1,540 @@
+Index: nana_2/CommandExecutor/cmd_main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># CommandExecutor/cmd_main.py\r\nimport os\r\nimport importlib\r\nfrom global_config import settings\r\nfrom core.log.logger_config import logger\r\n\r\nclass CommandExecutor:\r\n    \"\"\"\r\n    命令执行中心（总调度室）。\r\n    负责加载所有插件，并根据指令调度正确的插件来执行任务。\r\n    \"\"\"\r\n\r\n    def __init__(self):\r\n        self.plugins = {}\r\n        self._load_plugins()\r\n\r\n    def refresh_commands(self):\r\n        \"\"\"Reload all plugin modules to refresh available commands.\"\"\"\r\n        self.plugins = {}\r\n        self._load_plugins()\r\n\r\n    def _load_plugins(self):\r\n        \"\"\"\r\n        动态加载所有在 a/nana_2.0/plugins/ 文件夹里的插件。\r\n        这部分是插件系统的核心，非常酷！\r\n        \"\"\"\r\n        current_file_path = os.path.abspath(__file__)\r\n        # 获取CommandExecutor文件夹的路径\r\n        command_executor_dir = os.path.dirname(current_file_path)\r\n        # 获取项目的根目录(nana_2)的路径\r\n        project_root = os.path.dirname(command_executor_dir)\r\n         # 拼接出plugins文件夹的绝对路径\r\n        plugins_dir = settings.PLUGINS_DIR\r\n        logger.info(f\"[执行器] 正在从 '{plugins_dir}' 目录加载插件...\")\r\n\r\n        # 遍历 plugins 文件夹下的所有子文件夹\r\n        for plugin_name in os.listdir(plugins_dir):\r\n            plugin_path = os.path.join(plugins_dir, plugin_name)\r\n            if os.path.isdir(plugin_path) and not plugin_name.startswith('__'):\r\n                try:\r\n                    # 动态导入插件模块，例如: importlib.import_module(\"plugins.note_taker\")\r\n                    module = importlib.import_module(f\"plugins.{plugin_name}\")\r\n                    if hasattr(module, 'get_plugin'):\r\n                        plugin_instance = module.get_plugin()\r\n                        self.plugins[plugin_instance.get_name()] = plugin_instance\r\n                        logger.info(f\"  - 成功加载插件: '{plugin_instance.get_name()}'\")\r\n                except Exception as e:\r\n                    logger.info(f\"  - 加载插件 {plugin_name} 失败: {e}\")\r\n\r\n    @property\r\n    def loaded_plugins(self) -> dict:\r\n        \"\"\"\r\n        一个公开的属性，让外部可以获取到所有已加载的插件。\r\n        就像一个透明的展示柜，展示着所有可用的工具。\r\n        \"\"\"\r\n        return self.plugins\r\n\r\n    def execute_command(self, command: dict, controller):\r\n        \"\"\"\r\n        接收指令并执行。这是提供给外部调用的主方法。\r\n        \"\"\"\r\n        plugin_name = command.get('plugin')\r\n\r\n        if not plugin_name:\r\n            # 如果指令没有指定插件，说明可能是一条纯聊天或无需执行的消息\r\n            logger.info(f\"[执行器] 收到无需执行的指令。\")\r\n            return\r\n\r\n        logger.info(f\"[执行器] 收到指令，需要插件 '{plugin_name}' 来执行。\")\r\n\r\n        if plugin_name in self.plugins:\r\n            # # 找到了对应的插件，让它执行\r\n            # plugin = self.plugins[plugin_name]\r\n            # # 把指令里的 command 和 args 交给插件\r\n            # plugin.execute(\r\n            #     command.get('command'),\r\n            #     command.get('args', {}),\r\n            #     controller\r\n            #   测试阶段先不进行真正的操作\r\n            # )\r\n            cmd_name = command.get('command')\r\n            cmd_args = command.get('args', {})\r\n            logger.info(f\"====== [执行器-模拟模式] ======\")\r\n            logger.info(f\"  - 插件: {plugin_name}\")\r\n            logger.info(f\"  - 命令: {cmd_name}\")\r\n            logger.info(f\"  - 参数: {cmd_args}\")\r\n            logger.info(f\"==============================\")\r\n        else:\r\n            logger.info(f\"[执行器] 错误：找不到名为 '{plugin_name}' 的插件。\")\r\n            # 这里可以向GUI发送一个错误消息
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/CommandExecutor/cmd_main.py b/nana_2/CommandExecutor/cmd_main.py
+--- a/nana_2/CommandExecutor/cmd_main.py	(revision dd56cd3010798acc664b64c8781395d7e4dd79eb)
++++ b/nana_2/CommandExecutor/cmd_main.py	(date 1751865046060)
+@@ -78,13 +78,24 @@
+             #     controller
+             #   测试阶段先不进行真正的操作
+             # )
++            plugin = self.plugins[plugin_name]
+             cmd_name = command.get('command')
+             cmd_args = command.get('args', {})
+-            logger.info(f"====== [执行器-模拟模式] ======")
+-            logger.info(f"  - 插件: {plugin_name}")
+-            logger.info(f"  - 命令: {cmd_name}")
+-            logger.info(f"  - 参数: {cmd_args}")
+-            logger.info(f"==============================")
++            # logger.info(f"====== [执行器-模拟模式] ======")
++            # logger.info(f"  - 插件: {plugin_name}")
++            # logger.info(f"  - 命令: {cmd_name}")
++            # logger.info(f"  - 参数: {cmd_args}")
++            # logger.info(f"==============================")
++            logger.info(
++                f"[执行器] 调用插件 '{plugin_name}' 执行命令 '{cmd_name}'，参数: {cmd_args}"
++            )
++            try:
++                plugin.execute(cmd_name, cmd_args, controller)
++            except Exception as e:
++                logger.error(
++                    f"[执行器] 插件 '{plugin_name}' 执行命令 '{cmd_name}' 失败: {e}",
++                    exc_info=True,
++                )
+         else:
+             logger.info(f"[执行器] 错误：找不到名为 '{plugin_name}' 的插件。")
+             # 这里可以向GUI发送一个错误消息
+\ No newline at end of file
+Index: nana_2/core/log/nana.log
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>2025-07-03 16:42:04,721 - nana_logger - [INFO] - main_detector.__init__:21 - [检测器] 意图检测器已初始化。\r\n2025-07-03 16:42:04,721 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-03 16:42:04,723 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-03 16:42:07,426 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111\r\n2025-07-03 16:42:07,428 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...\r\n2025-07-03 16:42:07,428 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。\r\n2025-07-03 16:42:08,993 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 222\r\n2025-07-03 16:42:08,994 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...\r\n2025-07-03 16:42:08,994 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...\r\n2025-07-03 16:42:08,995 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。\r\n2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:08,996 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。\r\n2025-07-03 16:42:08,996 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。\r\n2025-07-03 16:42:12,865 - nana_logger - [INFO] - main.on_app_exit:75 - [总司令] 收到关闭信号，应用即将退出。\r\n2025-07-04 18:02:49,232 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-04 18:02:49,238 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-04 18:04:54,701 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-04 18:04:54,703 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-04 18:04:55,240 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\\\fghn的各种文件\\\\有关于自制\\\\自制py程序\\\\nana_2\\\\IntentDetector\\\\ai_service\\\\prompts.json'\r\n2025-07-04 18:04:55,241 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。\r\n2025-07-04 18:05:02,522 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111、\r\n2025-07-04 18:05:02,523 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-04 18:05:02,523 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-04 18:05:02,526 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-04 18:05:11,086 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁\r\n2025-07-04 18:05:11,087 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-04 18:05:11,088 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-04 18:05:11,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-04 18:05:11,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-04 18:05:11,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-04 18:05:25,316 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: ？\r\n2025-07-04 18:05:25,317 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-04 18:05:25,317 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-04 18:05:25,318 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-04 18:05:27,689 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。\r\n2025-07-07 09:22:02,470 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-07 09:22:02,479 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-07 09:22:03,112 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\\\fghn的各种文件\\\\有关于自制\\\\自制py程序\\\\nana_2\\\\IntentDetector\\\\ai_service\\\\prompts.json'\r\n2025-07-07 09:22:03,112 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。\r\n2025-07-07 09:22:10,623 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你好\r\n2025-07-07 09:22:10,624 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-07 09:22:10,625 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-07 09:22:10,626 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-07 09:22:10,627 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-07 09:22:10,627 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-07 09:28:39,149 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-07 09:28:39,153 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-07 09:28:39,717 - nana_logger - [INFO] - ai_service._load_main_prompts:34 - [AI服务] 成功加载“主教科书”: F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\IntentDetector\\ai_service\\prompts.json\r\n2025-07-07 09:28:39,718 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。\r\n2025-07-07 09:28:46,576 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你好\r\n2025-07-07 09:28:46,577 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-07 09:28:46,578 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:45 - [AI服务] 开始为AI动态构建“超级教科书”...\r\n2025-07-07 09:28:46,579 - nana_logger - [INFO] - ai_service.recognize_command:84 - [AI服务] 准备调用AI模型...\r\n2025-07-07 09:28:49,622 - nana_logger - [INFO] - ai_service.recognize_command:93 - [AI服务] AI模型返回原始结果: {\"plugin\": null, \"command\": null, \"args\": null, \"response\": \"你好呀！有什么我可以帮你的吗？\"}\r\n2025-07-07 09:28:49,624 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '你好呀！有什么我可以帮你的吗？'}\r\n2025-07-07 09:28:49,624 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-07 09:28:49,625 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-07 09:28:54,066 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁\r\n2025-07-07 09:28:54,067 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-07 09:28:54,067 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:45 - [AI服务] 开始为AI动态构建“超级教科书”...\r\n2025-07-07 09:28:54,068 - nana_logger - [INFO] - ai_service.recognize_command:84 - [AI服务] 准备调用AI模型...\r\n2025-07-07 09:28:56,088 - nana_logger - [INFO] - ai_service.recognize_command:93 - [AI服务] AI模型返回原始结果: {\"plugin\": null, \"command\": null, \"args\": null, \"response\": \"我是Nana酱，一个可爱的AI助手！\"}\r\n2025-07-07 09:28:56,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '我是Nana酱，一个可爱的AI助手！'}\r\n2025-07-07 09:28:56,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-07 09:28:56,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-07 09:28:59,246 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/core/log/nana.log b/nana_2/core/log/nana.log
+--- a/nana_2/core/log/nana.log	(revision dd56cd3010798acc664b64c8781395d7e4dd79eb)
++++ b/nana_2/core/log/nana.log	(date 1751865132357)
+@@ -1,76 +1,67 @@
+-2025-07-03 16:42:04,721 - nana_logger - [INFO] - main_detector.__init__:21 - [检测器] 意图检测器已初始化。
+-2025-07-03 16:42:04,721 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+-2025-07-03 16:42:04,723 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+-2025-07-03 16:42:07,426 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111
+-2025-07-03 16:42:07,428 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...
+-2025-07-03 16:42:07,428 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...
+-2025-07-03 16:42:07,429 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。
+-2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+-2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+-2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。
+-2025-07-03 16:42:07,429 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。
+-2025-07-03 16:42:08,993 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 222
+-2025-07-03 16:42:08,994 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...
+-2025-07-03 16:42:08,994 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...
+-2025-07-03 16:42:08,995 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。
+-2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+-2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}
+-2025-07-03 16:42:08,996 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。
+-2025-07-03 16:42:08,996 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。
+-2025-07-03 16:42:12,865 - nana_logger - [INFO] - main.on_app_exit:75 - [总司令] 收到关闭信号，应用即将退出。
+-2025-07-04 18:02:49,232 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+-2025-07-04 18:02:49,238 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+-2025-07-04 18:04:54,701 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+-2025-07-04 18:04:54,703 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+-2025-07-04 18:04:55,240 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\IntentDetector\\ai_service\\prompts.json'
+-2025-07-04 18:04:55,241 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
+-2025-07-04 18:05:02,522 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111、
+-2025-07-04 18:05:02,523 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+-2025-07-04 18:05:02,523 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+-2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+-2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+-2025-07-04 18:05:02,526 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+-2025-07-04 18:05:11,086 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁
+-2025-07-04 18:05:11,087 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+-2025-07-04 18:05:11,088 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+-2025-07-04 18:05:11,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+-2025-07-04 18:05:11,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+-2025-07-04 18:05:11,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+-2025-07-04 18:05:25,316 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: ？
+-2025-07-04 18:05:25,317 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+-2025-07-04 18:05:25,317 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+-2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+-2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+-2025-07-04 18:05:25,318 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+-2025-07-04 18:05:27,689 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
+-2025-07-07 09:22:02,470 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+-2025-07-07 09:22:02,479 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+-2025-07-07 09:22:03,112 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\IntentDetector\\ai_service\\prompts.json'
+-2025-07-07 09:22:03,112 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
+-2025-07-07 09:22:10,623 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你好
+-2025-07-07 09:22:10,624 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+-2025-07-07 09:22:10,625 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。
+-2025-07-07 09:22:10,626 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}
+-2025-07-07 09:22:10,627 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+-2025-07-07 09:22:10,627 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+-2025-07-07 09:28:39,149 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
+-2025-07-07 09:28:39,153 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'
+-2025-07-07 09:28:39,717 - nana_logger - [INFO] - ai_service._load_main_prompts:34 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
+-2025-07-07 09:28:39,718 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
+-2025-07-07 09:28:46,576 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你好
+-2025-07-07 09:28:46,577 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+-2025-07-07 09:28:46,578 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:45 - [AI服务] 开始为AI动态构建“超级教科书”...
+-2025-07-07 09:28:46,579 - nana_logger - [INFO] - ai_service.recognize_command:84 - [AI服务] 准备调用AI模型...
+-2025-07-07 09:28:49,622 - nana_logger - [INFO] - ai_service.recognize_command:93 - [AI服务] AI模型返回原始结果: {"plugin": null, "command": null, "args": null, "response": "你好呀！有什么我可以帮你的吗？"}
+-2025-07-07 09:28:49,624 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '你好呀！有什么我可以帮你的吗？'}
+-2025-07-07 09:28:49,624 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+-2025-07-07 09:28:49,625 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+-2025-07-07 09:28:54,066 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁
+-2025-07-07 09:28:54,067 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
+-2025-07-07 09:28:54,067 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:45 - [AI服务] 开始为AI动态构建“超级教科书”...
+-2025-07-07 09:28:54,068 - nana_logger - [INFO] - ai_service.recognize_command:84 - [AI服务] 准备调用AI模型...
+-2025-07-07 09:28:56,088 - nana_logger - [INFO] - ai_service.recognize_command:93 - [AI服务] AI模型返回原始结果: {"plugin": null, "command": null, "args": null, "response": "我是Nana酱，一个可爱的AI助手！"}
+-2025-07-07 09:28:56,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '我是Nana酱，一个可爱的AI助手！'}
+-2025-07-07 09:28:56,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+-2025-07-07 09:28:56,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+-2025-07-07 09:28:59,246 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 12:44:56,462 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 12:44:56,464 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 12:44:56,465 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 12:44:56,994 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 12:44:56,994 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 12:45:14,990 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 13:00:29,453 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 13:00:29,456 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 13:00:29,457 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 13:00:29,457 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 13:00:30,017 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 13:00:30,017 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 13:00:40,666 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 我想选取颜色
++2025-07-07 13:00:40,668 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
++2025-07-07 13:00:40,668 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:49 - [AI服务] 开始为AI动态构建“超级教科书”...
++2025-07-07 13:00:40,669 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'color_picker' 的专业技能。
++2025-07-07 13:00:40,669 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'sample_plugin' 的专业技能。
++2025-07-07 13:00:40,670 - nana_logger - [INFO] - ai_service.recognize_command:88 - [AI服务] 准备调用AI模型...
++2025-07-07 13:00:43,548 - nana_logger - [INFO] - ai_service.recognize_command:97 - [AI服务] AI模型返回原始结果: {"plugin": "color_picker", "command": "open_color_picker", "args": {}, "response": "好的，现在为你打开调色盘，请选择你喜欢的颜色。"}
++2025-07-07 13:00:43,549 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': 'color_picker', 'command': 'open_color_picker', 'args': {}, 'response': '好的，现在为你打开调色盘，请选择你喜欢的颜色。'}
++2025-07-07 13:00:43,549 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
++2025-07-07 13:00:43,550 - nana_logger - [INFO] - cmd_main.execute_command:69 - [执行器] 收到指令，需要插件 'color_picker' 来执行。
++2025-07-07 13:00:43,550 - nana_logger - [INFO] - cmd_main.execute_command:83 - ====== [执行器-模拟模式] ======
++2025-07-07 13:00:43,551 - nana_logger - [INFO] - cmd_main.execute_command:84 -   - 插件: color_picker
++2025-07-07 13:00:43,551 - nana_logger - [INFO] - cmd_main.execute_command:85 -   - 命令: open_color_picker
++2025-07-07 13:00:43,551 - nana_logger - [INFO] - cmd_main.execute_command:86 -   - 参数: {}
++2025-07-07 13:00:43,552 - nana_logger - [INFO] - cmd_main.execute_command:87 - ==============================
++2025-07-07 13:01:21,204 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 13:01:21,206 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 13:01:21,207 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 13:01:21,208 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 13:01:21,758 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 13:01:21,759 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 13:01:31,670 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 我想打开调色盘
++2025-07-07 13:01:31,671 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
++2025-07-07 13:01:31,671 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:49 - [AI服务] 开始为AI动态构建“超级教科书”...
++2025-07-07 13:01:31,672 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'color_picker' 的专业技能。
++2025-07-07 13:01:31,672 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'sample_plugin' 的专业技能。
++2025-07-07 13:01:31,673 - nana_logger - [INFO] - ai_service.recognize_command:88 - [AI服务] 准备调用AI模型...
++2025-07-07 13:01:35,647 - nana_logger - [INFO] - ai_service.recognize_command:97 - [AI服务] AI模型返回原始结果: {"plugin": "color_picker", "command": "open_color_picker", "args": {}, "response": "正在为你打开调色盘应用。"}
++2025-07-07 13:01:35,648 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': 'color_picker', 'command': 'open_color_picker', 'args': {}, 'response': '正在为你打开调色盘应用。'}
++2025-07-07 13:01:35,648 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
++2025-07-07 13:01:35,649 - nana_logger - [INFO] - cmd_main.execute_command:69 - [执行器] 收到指令，需要插件 'color_picker' 来执行。
++2025-07-07 13:01:35,649 - nana_logger - [INFO] - cmd_main.execute_command:83 - ====== [执行器-模拟模式] ======
++2025-07-07 13:01:35,650 - nana_logger - [INFO] - cmd_main.execute_command:84 -   - 插件: color_picker
++2025-07-07 13:01:35,650 - nana_logger - [INFO] - cmd_main.execute_command:85 -   - 命令: open_color_picker
++2025-07-07 13:01:35,650 - nana_logger - [INFO] - cmd_main.execute_command:86 -   - 参数: {}
++2025-07-07 13:01:35,650 - nana_logger - [INFO] - cmd_main.execute_command:87 - ==============================
++2025-07-07 13:01:45,937 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 13:11:07,514 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 13:11:07,515 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 13:11:07,517 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 13:11:07,518 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 13:11:08,145 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 13:11:08,145 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 13:11:25,497 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 我想打开取色器
++2025-07-07 13:11:25,498 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
++2025-07-07 13:11:25,499 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:49 - [AI服务] 开始为AI动态构建“超级教科书”...
++2025-07-07 13:11:25,499 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'color_picker' 的专业技能。
++2025-07-07 13:11:25,500 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'sample_plugin' 的专业技能。
++2025-07-07 13:11:25,501 - nana_logger - [INFO] - ai_service.recognize_command:88 - [AI服务] 准备调用AI模型...
++2025-07-07 13:11:31,997 - nana_logger - [INFO] - ai_service.recognize_command:97 - [AI服务] AI模型返回原始结果: {"plugin": "color_picker", "command": "open_color_picker", "args": {}, "response": "正在为你打开取色器功能。"}
++2025-07-07 13:11:31,997 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': 'color_picker', 'command': 'open_color_picker', 'args': {}, 'response': '正在为你打开取色器功能。'}
++2025-07-07 13:11:31,998 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
++2025-07-07 13:11:31,998 - nana_logger - [INFO] - cmd_main.execute_command:69 - [执行器] 收到指令，需要插件 'color_picker' 来执行。
++2025-07-07 13:11:31,999 - nana_logger - [INFO] - cmd_main.execute_command:89 - [执行器] 调用插件 'color_picker' 执行命令 'open_color_picker'，参数: {}
++2025-07-07 13:12:12,357 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
+Index: nana_2/core/plugin_system/plugin_manager.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># /nana_2/core/plugin_system/plugin_manager.py\r\n\r\nimport os\r\nimport importlib\r\nimport sys\r\nfrom global_config import settings\r\nfrom core.log.logger_config import logger\r\n\r\nclass PluginManager:\r\n    def __init__(self, app_controller):\r\n        self.app_controller = app_controller\r\n        self.plugins = {}  # key是插件名, value是插件实例\r\n\r\n    def load_all_plugins(self):\r\n        \"\"\"应用启动时，加载所有插件\"\"\"\r\n        logger.info(\"[插件理] 开始加载所有插件...\")\r\n        plugin_folders = [f.name for f in os.scandir(settings.PLUGINS_DIR) if f.is_dir() and not f.name.startswith('_')]\r\n        for plugin_name in plugin_folders:\r\n            self.load_plugin(plugin_name)\r\n        logger.info(f\"[插件理] 所有插件加载完毕，共 {len(self.plugins)} 个。\")\r\n\r\n    def load_plugin(self, plugin_name: str) -> bool:\r\n        \"\"\"加载单个插件\"\"\"\r\n        if plugin_name in self.plugins:\r\n            logger.warning(f\"[插件理] 插件 '{plugin_name}' 已经加载了。\")\r\n            return True\r\n        try:\r\n            # 动态导入插件模块\r\n            module_path = f\"plugins.{plugin_name}\"\r\n            if module_path in sys.modules:\r\n                # 如果模块已存在 (比如重载前)，先删掉缓存\r\n                del sys.modules[module_path]\r\n\r\n            plugin_module = importlib.import_module(module_path)\r\n            plugin_instance = plugin_module.get_plugin()\r\n            plugin_instance.on_load() # 调用插件自己的初始化方法\r\n            self.plugins[plugin_name] = plugin_instance\r\n            logger.info(f\"[插件理] 成功加载插件: '{plugin_name}'\")\r\n            return True\r\n        except Exception as e:\r\n            logger.error(f\"[插件理] 加载插件 '{plugin_name}' 失败: {e}\", exc_info=True)\r\n            return False\r\n\r\n    def unload_plugin(self, plugin_name: str) -> bool:\r\n        \"\"\"卸载单个插件\"\"\"\r\n        if plugin_name not in self.plugins:\r\n            logger.warning(f\"[插件理] 尝试卸载一个不存在或未加载的插件: '{plugin_name}'\")\r\n            return False\r\n        try:\r\n            plugin_instance = self.plugins[plugin_name]\r\n            plugin_instance.on_unload() # 调用插件自己的清理方法\r\n            del self.plugins[plugin_name]\r\n\r\n            # 从sys.modules中移除，确保下次加载是全新的\r\n            module_path = f\"plugins.{plugin_name}\"\r\n            if module_path in sys.modules:\r\n                del sys.modules[module_path]\r\n                # 注意：其子模块可能需要更复杂的处理，但对我们目前够用\r\n\r\n            logger.info(f\"[插件理] 成功卸载插件: '{plugin_name}'\")\r\n            return True\r\n        except Exception as e:\r\n            logger.error(f\"[插件理] 卸载插件 '{plugin_name}' 失败: {e}\", exc_info=True)\r\n            return False\r\n\r\n    def reload_plugin(self, plugin_name: str) -> tuple[bool, str]:\r\n        \"\"\"热重载单个插件\"\"\"\r\n        logger.info(f\"[插件理] 开始热重载插件: '{plugin_name}'...\")\r\n\r\n        # 1. 先卸载\r\n        if plugin_name in self.plugins:\r\n            if not self.unload_plugin(plugin_name):\r\n                return False, f\"重载失败：卸载旧版 '{plugin_name}' 插件时出错。\"\r\n\r\n        # 2. 再加载\r\n        if self.load_plugin(plugin_name):\r\n            # 3. 通知其他核心服务更新\r\n            self.app_controller.ai_service.rebuild_prompts()\r\n            self.app_controller.command_executor.refresh_commands()\r\n            logger.info(f\"[插件理] 插件 '{plugin_name}' 热重载成功！\")\r\n            return True, f\"插件 '{plugin_name}' 已经成功热重载啦！\"\r\n        else:\r\n            return False, f\"重载失败：加载新版 '{plugin_name}' 插件时出错。\"\r\n\r\n    def get_all_specs(self) -> dict:\r\n        \"\"\"获取所有插件的“说明书”给AI\"\"\"\r\n        all_specs = {}\r\n        for name, instance in self.plugins.items():\r\n            all_specs[name] = instance.get_spec()\r\n        return all_specs\r\n\r\n    def get_all_commands(self) -> dict:\r\n        \"\"\"获取所有插件的命令给执行器\"\"\"\r\n        all_commands = {}\r\n        for name, instance in self.plugins.items():\r\n            for command in instance.get_commands():\r\n                all_commands[f\"{name}.{command}\"] = instance\r\n        return all_commands
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/core/plugin_system/plugin_manager.py b/nana_2/core/plugin_system/plugin_manager.py
+--- a/nana_2/core/plugin_system/plugin_manager.py	(revision dd56cd3010798acc664b64c8781395d7e4dd79eb)
++++ b/nana_2/core/plugin_system/plugin_manager.py	(date 1751855530631)
+@@ -1,98 +1,147 @@
+-# /nana_2/core/plugin_system/plugin_manager.py
++# nana_2/CommandExecutor/plugin_manager.py
+ 
+ import os
+-import importlib
+-import sys
+-from global_config import settings
++import json
++import importlib.util
+ from core.log.logger_config import logger
++from global_config import settings
++
+ 
+ class PluginManager:
+-    def __init__(self, app_controller):
+-        self.app_controller = app_controller
+-        self.plugins = {}  # key是插件名, value是插件实例
++    """
++    插件管理器 (PluginManager)
++
++    能自动发现、加载和管理所有独立的插件。
++    它就像一个星探，总能发掘出插件们的才能！
++    """
+ 
+-    def load_all_plugins(self):
+-        """应用启动时，加载所有插件"""
+-        logger.info("[插件理] 开始加载所有插件...")
+-        plugin_folders = [f.name for f in os.scandir(settings.PLUGINS_DIR) if f.is_dir() and not f.name.startswith('_')]
+-        for plugin_name in plugin_folders:
+-            self.load_plugin(plugin_name)
+-        logger.info(f"[插件理] 所有插件加载完毕，共 {len(self.plugins)} 个。")
++    def __init__(self):
++        """初始化一个空的插件仓库和命令手册。"""
++        # self.plugins 用来存放插件的名字和它的实例对象，像这样:
++        # {'WebSearch': <WebSearchPlugin object>, 'SystemInfo': <SystemInfoPlugin object>}
++        self.plugins = {}
+ 
+-    def load_plugin(self, plugin_name: str) -> bool:
+-        """加载单个插件"""
+-        if plugin_name in self.plugins:
+-            logger.warning(f"[插件理] 插件 '{plugin_name}' 已经加载了。")
+-            return True
+-        try:
+-            # 动态导入插件模块
+-            module_path = f"plugins.{plugin_name}"
+-            if module_path in sys.modules:
+-                # 如果模块已存在 (比如重载前)，先删掉缓存
+-                del sys.modules[module_path]
+-
+-            plugin_module = importlib.import_module(module_path)
+-            plugin_instance = plugin_module.get_plugin()
+-            plugin_instance.on_load() # 调用插件自己的初始化方法
+-            self.plugins[plugin_name] = plugin_instance
+-            logger.info(f"[插件理] 成功加载插件: '{plugin_name}'")
+-            return True
+-        except Exception as e:
+-            logger.error(f"[插件理] 加载插件 '{plugin_name}' 失败: {e}", exc_info=True)
+-            return False
++        # self.commands 用来存放所有命令的详细信息，AI“大脑”会读取它：
++        # {'search_web': {'plugin_name': 'WebSearch', 'description': '...'}, ...}
++        self.commands = {}
++        logger.info("[插件系统] 插件管理器已就位，准备开始扫描！")
++
++    def discover_and_load_plugins(self):
++        """
++        扫描插件主目录 (PLUGINS_DIR)，找到所有插件并加载它们。
++        这是整个系统启动时最关键的一步！
++        """
++        plugins_dir = settings.PLUGINS_DIR
++        logger.info(f"[插件系统] 开始从插件仓库 '{plugins_dir}' 发现新插件...")
++
++        if not os.path.isdir(plugins_dir):
++            logger.warning(f"[插件系统] 插件目录 {plugins_dir} 不存在，跳过加载。")
++            return
++
++        # 使用 os.scandir() 遍历目录，它比 os.listdir() 更高效哦！
++        for entry in os.scandir(plugins_dir):
++            # 我们只关心文件夹，因为每个插件都住在自己的文件夹里
++            if entry.is_dir():
++                plugin_dir_path = entry.path
++                # 每个合格的插件都必须有一张“身份证” -> plugin.json
++                manifest_path = os.path.join(plugin_dir_path, 'plugin.json')
++
++                if os.path.exists(manifest_path):
++                    logger.info(f"[插件系统] 在 '{entry.name}' 中发现 manifest，准备加载...")
++                    try:
++                        self._load_plugin_from_manifest(plugin_dir_path, manifest_path)
++                    except Exception as e:
++                        # 如果加载失败，我们只记录错误，不让整个程序崩溃
++                        logger.error(f"[插件系统] 加载插件 '{entry.name}' 失败: {e}", exc_info=True)
++                else:
++                    logger.warning(f"[插件系统] 文件夹 '{entry.name}' 中缺少 plugin.json，已跳过。")
+ 
+-    def unload_plugin(self, plugin_name: str) -> bool:
+-        """卸载单个插件"""
+-        if plugin_name not in self.plugins:
+-            logger.warning(f"[插件理] 尝试卸载一个不存在或未加载的插件: '{plugin_name}'")
+-            return False
+-        try:
+-            plugin_instance = self.plugins[plugin_name]
+-            plugin_instance.on_unload() # 调用插件自己的清理方法
+-            del self.plugins[plugin_name]
++        logger.info(f"[插件系统] 插件发现流程结束。共加载了 {len(self.plugins)} 个插件。")
+ 
+-            # 从sys.modules中移除，确保下次加载是全新的
+-            module_path = f"plugins.{plugin_name}"
+-            if module_path in sys.modules:
+-                del sys.modules[module_path]
+-                # 注意：其子模块可能需要更复杂的处理，但对我们目前够用
++    def _load_plugin_from_manifest(self, plugin_dir, manifest_path):
++        """
++        根据给定的 manifest (plugin.json) 文件，加载单个插件。
++        这是真正的魔法发生的地方！
++        """
++        with open(manifest_path, 'r', encoding='utf-8') as f:
++            manifest = json.load(f)
+ 
+-            logger.info(f"[插件理] 成功卸载插件: '{plugin_name}'")
+-            return True
+-        except Exception as e:
+-            logger.error(f"[插件理] 卸载插件 '{plugin_name}' 失败: {e}", exc_info=True)
+-            return False
++        plugin_name = manifest['name']
++        entry_point = manifest['entry_point']  # 格式: '文件名.类名'
+ 
+-    def reload_plugin(self, plugin_name: str) -> tuple[bool, str]:
+-        """热重载单个插件"""
+-        logger.info(f"[插件理] 开始热重载插件: '{plugin_name}'...")
+-
+-        # 1. 先卸载
++        # 防止重复加载同一个插件
+         if plugin_name in self.plugins:
+-            if not self.unload_plugin(plugin_name):
+-                return False, f"重载失败：卸载旧版 '{plugin_name}' 插件时出错。"
++            logger.warning(f"[插件系统] 插件 '{plugin_name}' 已经加载过了，将跳过。")
++            return
++
++        # --- 动态导入模块的关键步骤 ---
++        module_name, class_name = entry_point.rsplit('.', 1)
++        module_file_path = os.path.join(plugin_dir, f"{module_name}.py")
++
++        if not os.path.exists(module_file_path):
++            raise FileNotFoundError(f"插件入口文件不存在: {module_file_path}")
++
++        # 1. 创建一个模块规范 (spec)
++        spec = importlib.util.spec_from_file_location(module_name, module_file_path)
++        # 2. 根据规范创建一个新模块
++        plugin_module = importlib.util.module_from_spec(spec)
++        # 3. 执行模块代码，将其加载到内存中
++        spec.loader.exec_module(plugin_module)
++        # --- 动态导入完成 ---
++
++        # 从加载好的模块中，获取插件的类
++        PluginClass = getattr(plugin_module, class_name)
++        # 创建插件类的实例
++        plugin_instance = PluginClass()
++
++        # 将插件实例存入我们的“仓库”
++        self.plugins[plugin_name] = plugin_instance
++
++        # 读取并注册该插件的所有命令到“命令手册”
++        for cmd_info in manifest.get('commands', []):
++            cmd_name = cmd_info['command_name']
++            self.commands[cmd_name] = {
++                "plugin_name": plugin_name,  # 记录命令属于哪个插件
++                "description": cmd_info.get('description', '没有描述'),
++                "parameters": cmd_info.get('parameters', [])
++            }
++            logger.debug(f"[插件系统] 命令 '{cmd_name}' 已注册到插件 '{plugin_name}'。")
+ 
+-        # 2. 再加载
+-        if self.load_plugin(plugin_name):
+-            # 3. 通知其他核心服务更新
+-            self.app_controller.ai_service.rebuild_prompts()
+-            self.app_controller.command_executor.refresh_commands()
+-            logger.info(f"[插件理] 插件 '{plugin_name}' 热重载成功！")
+-            return True, f"插件 '{plugin_name}' 已经成功热重载啦！"
+-        else:
+-            return False, f"重载失败：加载新版 '{plugin_name}' 插件时出错。"
++        logger.info(f"[插件系统] 插件 '{plugin_name}' (版本: {manifest.get('version', 'N/A')}) 已成功加载！")
+ 
+-    def get_all_specs(self) -> dict:
+-        """获取所有插件的“说明书”给AI"""
+-        all_specs = {}
+-        for name, instance in self.plugins.items():
+-            all_specs[name] = instance.get_spec()
+-        return all_specs
++    def get_plugin_by_command(self, command_name: str):
++        """
++        当AI决定使用某个命令时，用这个函数找到能执行该命令的插件实例。
+ 
+-    def get_all_commands(self) -> dict:
+-        """获取所有插件的命令给执行器"""
+-        all_commands = {}
+-        for name, instance in self.plugins.items():
+-            for command in instance.get_commands():
+-                all_commands[f"{name}.{command}"] = instance
+-        return all_commands
+\ No newline at end of file
++        Args:
++            command_name (str): 命令的名称，例如 'search_web'。
++
++        Returns:
++            返回插件的实例对象，如果找不到则返回 None。
++        """
++        command_meta = self.commands.get(command_name)
++        if not command_meta:
++            logger.warning(f"[插件系统] 尝试执行一个不存在的命令: {command_name}")
++            return None
++
++        plugin_name = command_meta['plugin_name']
++        return self.plugins.get(plugin_name)
++
++    def get_all_command_definitions(self) -> list[dict]:
++        """
++        获取所有已注册的命令的定义列表。
++        这个列表会交给 AI 服务，让它知道自己有哪些“工具”可以用。
++
++        Returns:
++            一个列表，每个元素都是一个描述命令的字典。
++        """
++        # 我们需要给AI一个干净的、包含命令名的列表
++        all_definitions = []
++        for cmd_name, cmd_details in self.commands.items():
++            definition = {
++                "command_name": cmd_name,
++                "description": cmd_details["description"],
++                "parameters": cmd_details["parameters"]
++            }
++            all_definitions.append(definition)
++        return all_definitions
+\ No newline at end of file
+Index: 新ui/ui.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/新ui/ui.py b/新ui/ui.py
+new file mode 100644
+--- /dev/null	(date 1751865616487)
++++ b/新ui/ui.py	(date 1751865616487)
+@@ -0,0 +1,92 @@
++from PySide6.QtWidgets import (
++    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
++    QScrollArea, QLineEdit, QPushButton, QLabel
++)
++from PySide6.QtCore import Qt, QSize
++
++class ChatWindow(QMainWindow):
++    def __init__(self):
++        super().__init__()
++        self.setWindowTitle("Lin酱的 GPT 界面")
++        self.resize(600, 700)
++
++        # 中央 Widget
++        central = QWidget()
++        self.setCentralWidget(central)
++        layout = QVBoxLayout(central)
++        layout.setContentsMargins(10, 10, 10, 10)
++        layout.setSpacing(5)
++
++        # 滚动区：用来显示消息
++        self.scroll = QScrollArea()
++        self.scroll.setWidgetResizable(True)
++        layout.addWidget(self.scroll)
++
++        # 消息容器
++        self.chat_container = QWidget()
++        self.chat_layout = QVBoxLayout(self.chat_container)
++        self.chat_layout.addStretch(1)
++        self.scroll.setWidget(self.chat_container)
++
++        # 输入区
++        input_bar = QHBoxLayout()
++        self.edit = QLineEdit()
++        self.edit.setPlaceholderText("输入消息，然后按“发送”…")
++        self.send_btn = QPushButton("发送")
++        self.send_btn.setDefault(True)
++        input_bar.addWidget(self.edit)
++        input_bar.addWidget(self.send_btn)
++        layout.addLayout(input_bar)
++
++        # 事件绑定
++        self.send_btn.clicked.connect(self.on_send)
++        self.edit.returnPressed.connect(self.on_send)
++
++        # 简单样式
++        self.setStyleSheet("""
++            QMainWindow { background: #f5f5f5; }
++            QScrollArea { border: none; }
++            QLabel {
++                padding: 8px;
++                border-radius: 6px;
++                max-width: 400px;
++            }
++            .user { background: #007aff; color: white; align-self: flex-end; }
++            .bot  { background: #e5e5ea; color: black; align-self: flex-start; }
++            QLineEdit { padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
++            QPushButton { min-width: 80px; min-height: 30px; }
++        """)
++
++    def add_message(self, text: str, who: str):
++        lbl = QLabel(text)
++        lbl.setWordWrap(True)
++        lbl.setProperty("class", who)
++        # 强制刷新样式
++        lbl.style().unpolish(lbl)
++        lbl.style().polish(lbl)
++        self.chat_layout.insertWidget(self.chat_layout.count()-1, lbl)
++
++    def on_send(self):
++        txt = self.edit.text().strip()
++        if not txt:
++            return
++        # 添加用户消息
++        self.add_message(txt, "user")
++        self.edit.clear()
++        QApplication.processEvents()
++
++        # TODO: 在这里调用 OpenAI API，获取真正的回复
++        # 先模拟一个简单回声
++        reply = f"Echo: {txt}"
++        self.add_message(reply, "bot")
++
++        # 滚到底部
++        self.scroll.verticalScrollBar().setValue(
++            self.scroll.verticalScrollBar().maximum()
++        )
++
++if __name__ == "__main__":
++    app = QApplication([])
++    win = ChatWindow()
++    win.show()
++    app.exec()

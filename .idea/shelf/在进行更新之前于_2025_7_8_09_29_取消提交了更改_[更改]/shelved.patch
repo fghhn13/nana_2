@@ -1,0 +1,1124 @@
+Index: nana_2/plugins/note_taker/__init__.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/plugins/note_taker/__init__.py b/nana_2/plugins/note_taker/__init__.py
+--- a/nana_2/plugins/note_taker/__init__.py	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/plugins/note_taker/__init__.py	(date 1751937389417)
+@@ -1,0 +1,64 @@
++from plugins.base_plugin import BasePlugin
++from core.log.logger_config import logger
++from .notetaker_handle import (
++    ensure_notes_folder_exists,
++    create_note,
++    read_note,
++    delete_note,
++    list_notes,
++)
++from .notetaker_ui import open_note_editor, open_notes_window
++
++
++class NoteTakerPlugin(BasePlugin):
++    def get_name(self) -> str:
++        return "note_taker"
++
++    def get_commands(self) -> list[str]:
++        return ["create_note", "read_note", "delete_note", "list_notes"]
++
++    def on_load(self):
++        ensure_notes_folder_exists()
++
++    def execute(self, command: str, args: dict, controller) -> None:
++        title = args.get("title") if args else None
++        if command == "create_note":
++            if not title:
++                return
++            created = create_note(title)
++            msg = f"新建笔记 '{title}' 成功。" if created else f"笔记 '{title}' 已存在。"
++            controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana", msg, "nana_sender")))
++            content = "" if created else read_note(title)
++            open_note_editor(title, content, controller.view.master)
++        elif command == "read_note":
++            if not title:
++                return
++            try:
++                content = read_note(title)
++            except FileNotFoundError:
++                err = f"笔记 '{title}' 不存在。"
++                controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana酱", err, "error_sender")))
++                return
++            open_note_editor(title, content, controller.view.master)
++        elif command == "delete_note":
++            if not title:
++                return
++            try:
++                delete_note(title)
++                msg = f"已删除笔记 '{title}'。"
++                controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana", msg, "nana_sender")))
++            except FileNotFoundError:
++                err = f"笔记 '{title}' 不存在。"
++                controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana酱", err, "error_sender")))
++        elif command == "list_notes":
++            notes = list_notes()
++            if notes:
++                open_notes_window(notes, controller.view.master)
++            else:
++                controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana", "没有找到任何笔记。", "nana_sender")))
++        else:
++            logger.warning(f"未识别的命令: {command}")
++
++
++def get_plugin():
++    return NoteTakerPlugin()
+Index: nana_2/plugins/note_taker/note_taker_prompt.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{\r\n  \"description\": \"【记事本插件】功能：可以创建、读取、删除文本笔记。\",\r\n  \"examples\": [\r\n    {\r\n      \"user\": \"帮我新建一个笔记，名字叫'会议纪要'\",\r\n      \"ai\": {\r\n        \"plugin\": \"note_taker\",\r\n        \"command\": \"create_note\",\r\n        \"args\": {\r\n          \"title\": \"会议纪要\"\r\n        },\r\n        \"response\": \"好的，正在为你创建名为'会议纪要'的新笔记。\"\r\n      }\r\n    },\r\n    {\r\n      \"user\": \"我想看看'购物清单'这个笔记写了什么\",\r\n      \"ai\": {\r\n        \"plugin\": \"note_taker\",\r\n        \"command\": \"read_note\",\r\n        \"args\": {\r\n          \"title\": \"购物清单\"\r\n        },\r\n        \"response\": \"收到，正在查找'购物清单'的内容。\"\r\n      }\r\n    }\r\n  ]\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/plugins/note_taker/note_taker_prompt.json b/nana_2/plugins/note_taker/note_taker_prompt.json
+--- a/nana_2/plugins/note_taker/note_taker_prompt.json	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/plugins/note_taker/note_taker_prompt.json	(date 1751937389420)
+@@ -1,27 +1,94 @@
+ {
+-  "description": "【记事本插件】功能：可以创建、读取、删除文本笔记。",
++  "description": "记事本插件：可以创建、查找、删除以及列出笔记。",
+   "examples": [
+     {
+-      "user": "帮我新建一个笔记，名字叫'会议纪要'",
++      "user": "帮我找一下上周的会议记录",
++      "ai": {
++        "intent": "search",
++        "entity": "上周的会议记录",
++        "response": "好的，正在为你查找关于“上周的会议记录”的笔记...",
++        "success_response": null
++      }
++    },
++    {
++      "user": "删掉那个叫做“购物清单”的笔记",
++      "ai": {
++        "intent": "delete",
++        "entity": "购物清单",
++        "response": "你确定要删除笔记“购物清单”吗？这个操作无法撤销哦。",
++        "success_response": "收到！笔记“购物清单”已经被我彻底删掉啦！"
++      }
++    },
++    {
++      "user": "创建一个名为“周末计划”的笔记",
++      "ai": {
++        "intent": "create",
++        "entity": "周末计划",
++        "response": "好的！为你创建了新笔记“周末计划”，并打开了编辑器哦！",
++        "success_response": null
++      }
++    },
++    {
++      "user": "你好吗？",
+       "ai": {
+-        "plugin": "note_taker",
+-        "command": "create_note",
+-        "args": {
+-          "title": "会议纪要"
+-        },
+-        "response": "好的，正在为你创建名为'会议纪要'的新笔记。"
++        "intent": "chat",
++        "entity": null,
++        "response": "我很好，感谢关心！有什么可以为你服务的吗？",
++        "success_response": null
+       }
+     },
+     {
+-      "user": "我想看看'购物清单'这个笔记写了什么",
++      "user": "打开笔记列表",
+       "ai": {
+-        "plugin": "note_taker",
+-        "command": "read_note",
+-        "args": {
+-          "title": "购物清单"
+-        },
+-        "response": "收到，正在查找'购物清单'的内容。"
++        "intent": "show_notes",
++        "entity": null,
++        "response": "好的，正在为你打开笔记列表窗口。",
++        "success_response": null
++      }
++    },
++    {
++      "user": "我有哪些笔记？",
++      "ai": {
++        "intent": "show_notes",
++        "entity": null,
++        "response": "好的，马上为你打开所有笔记的列表！",
++        "success_response": null
++      }
++    },
++    {
++      "conversation": [
++        {"role": "assistant", "content": "我找到了这个笔记：‘高分辨率’，你是想找这个吗？"},
++        {"role": "user", "content": "对的，打开它"}
++      ],
++      "ai": {
++        "intent": "confirm_action",
++        "target": "高分辨率",
++        "response": "收到！这就帮你打开笔记‘高分辨率’！",
++        "success_response": null
++      }
++    },
++    {
++      "conversation": [
++        {"role": "assistant", "content": "确定要删除笔记'会议纪要'吗？"},
++        {"role": "user", "content": "先别"}
++      ],
++      "ai": {
++        "intent": "deny_action",
++        "response": "好的，已取消操作。很高兴你改变了主意！",
++        "success_response": null
++      }
++    },
++    {
++      "conversation": [
++        {"role": "assistant", "content": "我找到了好几个相关的笔记：\n- 教程1\n- 教程2\n你指的是哪个呀？"},
++        {"role": "user", "content": "第一个"}
++      ],
++      "ai": {
++        "intent": "clarify_action",
++        "target": "教程1",
++        "response": "明白！正在为你打开笔记“教程1”。",
++        "success_response": null
+       }
+     }
+   ]
+-}
+\ No newline at end of file
++}
+Index: nana_2/core/log/nana.log
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>2025-07-03 16:42:04,721 - nana_logger - [INFO] - main_detector.__init__:21 - [检测器] 意图检测器已初始化。\r\n2025-07-03 16:42:04,721 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-03 16:42:04,723 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-03 16:42:07,426 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111\r\n2025-07-03 16:42:07,428 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...\r\n2025-07-03 16:42:07,428 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '111'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。\r\n2025-07-03 16:42:07,429 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。\r\n2025-07-03 16:42:08,993 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 222\r\n2025-07-03 16:42:08,994 - nana_logger - [INFO] - main_detector.detect_and_parse:31 - [检测器] 开始检测用户意图...\r\n2025-07-03 16:42:08,994 - nana_logger - [INFO] - ai_service.recognize_command:59 - [AI服务] 收到对话历史，准备调用AI模型...\r\n2025-07-03 16:42:08,995 - nana_logger - [INFO] - ai_service.recognize_command:72 - [AI服务] 测试模式：返回一个专门用于测试的指令。\r\n2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:35 - [检测器] 从AI服务收到原始指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:08,995 - nana_logger - [INFO] - main_detector.detect_and_parse:40 - [检测器] 经过解析器处理后的干净指令: {'plugin': 'test_plugin', 'command': 'echo', 'args': {'text_from_user': '222'}, 'response': '（模拟AI对话）收到，正在派发测试任务...'}\r\n2025-07-03 16:42:08,996 - nana_logger - [INFO] - main_detector.detect_and_parse:45 - [检测器] 意图检测流程完成。\r\n2025-07-03 16:42:08,996 - nana_logger - [INFO] - cmd_main.execute_command:56 - [执行器] 收到指令，需要插件 'test_plugin' 来执行。\r\n2025-07-03 16:42:12,865 - nana_logger - [INFO] - main.on_app_exit:75 - [总司令] 收到关闭信号，应用即将退出。\r\n2025-07-04 18:02:49,232 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-04 18:02:49,238 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-04 18:04:54,701 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-04 18:04:54,703 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-04 18:04:55,240 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\\\fghn的各种文件\\\\有关于自制\\\\自制py程序\\\\nana_2\\\\IntentDetector\\\\ai_service\\\\prompts.json'\r\n2025-07-04 18:04:55,241 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。\r\n2025-07-04 18:05:02,522 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 111、\r\n2025-07-04 18:05:02,523 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-04 18:05:02,523 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-04 18:05:02,525 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-04 18:05:02,526 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-04 18:05:11,086 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁\r\n2025-07-04 18:05:11,087 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-04 18:05:11,088 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-04 18:05:11,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-04 18:05:11,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-04 18:05:11,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-04 18:05:25,316 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: ？\r\n2025-07-04 18:05:25,317 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-04 18:05:25,317 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-04 18:05:25,318 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-04 18:05:25,318 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-04 18:05:27,689 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。\r\n2025-07-07 09:22:02,470 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-07 09:22:02,479 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-07 09:22:03,112 - nana_logger - [ERROR] - ai_service._load_main_prompts:36 - [AI服务] 加载“主教科书”失败: [Errno 2] No such file or directory: 'F:\\\\fghn的各种文件\\\\有关于自制\\\\自制py程序\\\\nana_2\\\\IntentDetector\\\\ai_service\\\\prompts.json'\r\n2025-07-07 09:22:03,112 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。\r\n2025-07-07 09:22:10,623 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你好\r\n2025-07-07 09:22:10,624 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-07 09:22:10,625 - nana_logger - [WARNING] - ai_service.recognize_command:68 - [AI服务] AI客户端未初始化或主prompts未加载，返回默认指令。\r\n2025-07-07 09:22:10,626 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '嗯...我好像没太听懂你的意思。'}\r\n2025-07-07 09:22:10,627 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-07 09:22:10,627 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-07 09:28:39,149 - nana_logger - [INFO] - cmd_main._load_plugins:29 - [执行器] 正在从 'F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\plugins' 目录加载插件...\r\n2025-07-07 09:28:39,153 - nana_logger - [INFO] - cmd_main._load_plugins:41 -   - 成功加载插件: 'test_plugin'\r\n2025-07-07 09:28:39,717 - nana_logger - [INFO] - ai_service._load_main_prompts:34 - [AI服务] 成功加载“主教科书”: F:\\fghn的各种文件\\有关于自制\\自制py程序\\nana_2\\IntentDetector\\ai_service\\prompts.json\r\n2025-07-07 09:28:39,718 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。\r\n2025-07-07 09:28:46,576 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你好\r\n2025-07-07 09:28:46,577 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-07 09:28:46,578 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:45 - [AI服务] 开始为AI动态构建“超级教科书”...\r\n2025-07-07 09:28:46,579 - nana_logger - [INFO] - ai_service.recognize_command:84 - [AI服务] 准备调用AI模型...\r\n2025-07-07 09:28:49,622 - nana_logger - [INFO] - ai_service.recognize_command:93 - [AI服务] AI模型返回原始结果: {\"plugin\": null, \"command\": null, \"args\": null, \"response\": \"你好呀！有什么我可以帮你的吗？\"}\r\n2025-07-07 09:28:49,624 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '你好呀！有什么我可以帮你的吗？'}\r\n2025-07-07 09:28:49,624 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-07 09:28:49,625 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-07 09:28:54,066 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 你是谁\r\n2025-07-07 09:28:54,067 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...\r\n2025-07-07 09:28:54,067 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:45 - [AI服务] 开始为AI动态构建“超级教科书”...\r\n2025-07-07 09:28:54,068 - nana_logger - [INFO] - ai_service.recognize_command:84 - [AI服务] 准备调用AI模型...\r\n2025-07-07 09:28:56,088 - nana_logger - [INFO] - ai_service.recognize_command:93 - [AI服务] AI模型返回原始结果: {\"plugin\": null, \"command\": null, \"args\": null, \"response\": \"我是Nana酱，一个可爱的AI助手！\"}\r\n2025-07-07 09:28:56,088 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '我是Nana酱，一个可爱的AI助手！'}\r\n2025-07-07 09:28:56,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。\r\n2025-07-07 09:28:56,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。\r\n2025-07-07 09:28:59,246 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/core/log/nana.log b/nana_2/core/log/nana.log
+--- a/nana_2/core/log/nana.log	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/core/log/nana.log	(date 1751937494924)
+@@ -74,3 +74,86 @@
+ 2025-07-07 09:28:56,089 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
+ 2025-07-07 09:28:56,089 - nana_logger - [INFO] - cmd_main.execute_command:61 - [执行器] 收到无需执行的指令。
+ 2025-07-07 09:28:59,246 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 14:29:25,154 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 14:29:25,163 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 14:29:25,169 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 14:29:25,169 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 14:29:25,846 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 14:29:25,846 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 14:29:45,335 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 帮我打开取色器
++2025-07-07 14:29:45,336 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
++2025-07-07 14:29:45,338 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:49 - [AI服务] 开始为AI动态构建“超级教科书”...
++2025-07-07 14:29:45,338 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'color_picker' 的专业技能。
++2025-07-07 14:29:45,339 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'sample_plugin' 的专业技能。
++2025-07-07 14:29:45,340 - nana_logger - [INFO] - ai_service.recognize_command:88 - [AI服务] 准备调用AI模型...
++2025-07-07 14:29:51,102 - nana_logger - [INFO] - ai_service.recognize_command:97 - [AI服务] AI模型返回原始结果: {"plugin": "color_picker", "command": "open_color_picker", "args": {}, "response": "正在为你打开取色器工具。"}
++2025-07-07 14:29:51,102 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': 'color_picker', 'command': 'open_color_picker', 'args': {}, 'response': '正在为你打开取色器工具。'}
++2025-07-07 14:29:51,103 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
++2025-07-07 14:29:51,103 - nana_logger - [INFO] - cmd_main.execute_command:69 - [执行器] 收到指令，需要插件 'color_picker' 来执行。
++2025-07-07 14:29:51,103 - nana_logger - [INFO] - cmd_main.execute_command:75 - [执行器] 调用插件 'color_picker' 执行命令 'open_color_picker'，参数: {}
++2025-07-07 14:30:03,829 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 14:38:46,189 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 14:38:46,191 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 14:38:46,192 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 14:38:46,194 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 14:38:46,731 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 14:38:46,731 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 14:38:48,154 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 14:58:20,767 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 14:58:20,771 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 14:58:20,771 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 14:58:20,771 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 14:58:21,302 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 14:58:21,302 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 15:01:28,632 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 15:01:28,638 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 15:01:28,641 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 15:01:28,644 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 15:01:28,642 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 15:01:28,654 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 15:01:28,658 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 15:01:28,665 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 15:01:31,746 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 15:01:31,749 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 15:01:31,928 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 15:01:31,929 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 15:01:33,868 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 15:01:35,307 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 15:01:44,127 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 15:01:44,129 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 15:01:44,129 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 15:01:44,131 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 15:01:44,689 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 15:01:44,689 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 15:01:54,157 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-07 15:35:39,847 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-07 15:35:39,851 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-07 15:35:39,857 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-07 15:35:39,862 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-07 15:35:41,690 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-07 15:35:41,691 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-07 15:35:56,321 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: ？
++2025-07-07 15:35:56,322 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
++2025-07-07 15:35:56,323 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:49 - [AI服务] 开始为AI动态构建“超级教科书”...
++2025-07-07 15:35:56,324 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'color_picker' 的专业技能。
++2025-07-07 15:35:56,325 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'sample_plugin' 的专业技能。
++2025-07-07 15:35:56,326 - nana_logger - [INFO] - ai_service.recognize_command:88 - [AI服务] 准备调用AI模型...
++2025-07-07 15:36:03,634 - nana_logger - [INFO] - ai_service.recognize_command:97 - [AI服务] AI模型返回原始结果: {"plugin": null, "command": null, "args": null, "response": "有什么问题吗？我在这里帮助你哦！"}
++2025-07-07 15:36:03,634 - nana_logger - [INFO] - main_detector.detect_and_parse:32 - [检测器] 从AI服务收到原始指令: {'plugin': None, 'command': None, 'args': None, 'response': '有什么问题吗？我在这里帮助你哦！'}
++2025-07-07 15:36:03,635 - nana_logger - [INFO] - main_detector.detect_and_parse:43 - [检测器] 意图检测流程完成。
++2025-07-07 15:36:03,635 - nana_logger - [INFO] - cmd_main.execute_command:66 - [执行器] 收到无需执行的指令。
++2025-07-07 15:36:11,793 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
++2025-07-08 09:17:02,925 - nana_logger - [INFO] - cmd_main._load_plugins:34 - [执行器] 正在从 'F:\fghn的各种文件\有关于自制\自制py程序\nana_2\plugins' 目录加载插件...
++2025-07-08 09:17:02,928 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'color_picker'
++2025-07-08 09:17:02,935 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'note_taker'
++2025-07-08 09:17:02,935 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'sample_plugin'
++2025-07-08 09:17:02,936 - nana_logger - [INFO] - cmd_main._load_plugins:46 -   - 成功加载插件: 'test_plugin'
++2025-07-08 09:17:03,495 - nana_logger - [INFO] - ai_service._load_main_prompts:38 - [AI服务] 成功加载“主教科书”: F:\fghn的各种文件\有关于自制\自制py程序\nana_2\IntentDetector\ai_service\prompts.json
++2025-07-08 09:17:03,495 - nana_logger - [INFO] - main_detector.__init__:22 - [检测器] 意图检测器已初始化，并与命令执行器建立连接。
++2025-07-08 09:17:41,359 - nana_logger - [INFO] - event_handlers.on_send_click:23 - 捕获到用户输入: 帮我记一个“学习计划”的笔记
++2025-07-08 09:17:41,359 - nana_logger - [INFO] - main_detector.detect_and_parse:25 - [检测器] 开始检测用户意图...
++2025-07-08 09:17:41,360 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:49 - [AI服务] 开始为AI动态构建“超级教科书”...
++2025-07-08 09:17:41,360 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'color_picker' 的专业技能。
++2025-07-08 09:17:41,361 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'note_taker' 的专业技能。
++2025-07-08 09:17:41,361 - nana_logger - [INFO] - ai_service._build_dynamic_prompt:58 -   - 已加载插件 'sample_plugin' 的专业技能。
++2025-07-08 09:18:14,924 - nana_logger - [INFO] - main.on_app_exit:81 - [总司令] 收到关闭信号，应用即将退出。
+Index: nana_2/plugins/color_picker/color_picker_app.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>\"\"\"Simple color picker implemented with PySide6.\"\"\"\r\n\r\nimport sys\r\nimport colorsys\r\nimport ctypes\r\n\r\nimport numpy as np\r\nfrom PIL import Image\r\nfrom PySide6.QtCore import Qt\r\nfrom PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor\r\nfrom PySide6.QtWidgets import (\r\n    QApplication,\r\n    QWidget,\r\n    QLabel,\r\n    QSlider,\r\n    QListWidget,\r\n    QPushButton,\r\n    QVBoxLayout,\r\n    QHBoxLayout,\r\n)\r\n\r\n\r\ntry:\r\n    ctypes.windll.shcore.SetProcessDpiAwareness(1)\r\nexcept Exception:\r\n    pass\r\n\r\n\r\nCOLORS = {\r\n    \"bg_main\": \"#212121\",\r\n    \"canvas_bg\": \"#212121\",\r\n    \"slider_bg\": \"#414141\",\r\n    \"slider_trough\": \"#515151\",\r\n    \"label_fg\": \"#cbcbcb\",\r\n    \"preview_bd\": \"#ffffff\",\r\n}\r\n\r\n\r\ndef gen_hue_wheel(dia: int) -> Image.Image:\r\n    \"\"\"Generate a hue circle as a PIL image.\"\"\"\r\n    data = np.zeros((dia, dia, 3), dtype=np.uint8)\r\n    cx, cy = dia / 2, dia / 2\r\n    r_max = dia / 2\r\n    for y in range(dia):\r\n        for x in range(dia):\r\n            dx, dy = x - cx, y - cy\r\n            r = np.hypot(dx, dy)\r\n            if r <= r_max:\r\n                h = (np.degrees(np.arctan2(dy, dx)) + 360) % 360 / 360\r\n                rgb = colorsys.hsv_to_rgb(h, 1.0, 1.0)\r\n                data[y, x] = [int(255 * c) for c in rgb]\r\n    return Image.fromarray(data)\r\n\r\n\r\ndef gen_sv_square(size: int, hue: float, val: float) -> Image.Image:\r\n    \"\"\"Generate a saturation/value square as a PIL image.\"\"\"\r\n    data = np.zeros((size, size, 3), dtype=np.uint8)\r\n    for i in range(size):\r\n        for j in range(size):\r\n            s = j / (size - 1)\r\n            v = 1 - i / (size - 1)\r\n            rgb = colorsys.hsv_to_rgb(hue, s, v * val)\r\n            data[i, j] = [int(255 * c) for c in rgb]\r\n    return Image.fromarray(data)\r\n\r\n\r\ndef pil_to_pixmap(img: Image.Image) -> QPixmap:\r\n    \"\"\"Convert PIL image to Qt pixmap.\"\"\"\r\n    img = img.convert(\"RGBA\")\r\n    data = img.tobytes(\"raw\", \"RGBA\")\r\n    qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)\r\n    return QPixmap.fromImage(qimg)\r\n\r\n\r\nclass ColorPickerWindow(QWidget):\r\n    \"\"\"Main window for the color picker.\"\"\"\r\n\r\n    def __init__(self) -> None:\r\n        super().__init__()\r\n        self.wheel_dia = 300\r\n        self.wheel_r = self.wheel_dia // 2\r\n        self.sv_size = 300\r\n        self.cur_hue = 0.0\r\n        self.cur_val = 1.0\r\n        self.last_hex: str | None = None\r\n        self._setup_ui()\r\n        self.update_sv()\r\n\r\n    # ------------------------------------------------------------------ UI\r\n    def _setup_ui(self) -> None:\r\n        self.setWindowTitle(\"自由取色器 - lin酱版\")\r\n        self.setFixedSize(650, 480)\r\n        self.setStyleSheet(f\"background-color:{COLORS['bg_main']}\")\r\n\r\n        main_layout = QVBoxLayout(self)\r\n        canvas_layout = QHBoxLayout()\r\n        main_layout.addLayout(canvas_layout)\r\n\r\n        # hue wheel\r\n        self.hue_base = pil_to_pixmap(gen_hue_wheel(self.wheel_dia))\r\n        self.hue_label = QLabel()\r\n        self.hue_label.setPixmap(self.hue_base)\r\n        self.hue_label.setCursor(Qt.CrossCursor)\r\n        canvas_layout.addWidget(self.hue_label)\r\n        self.hue_label.mousePressEvent = self._on_hue_press  # type: ignore\r\n        self.hue_label.mouseMoveEvent = self._on_hue_move  # type: ignore\r\n\r\n        # saturation/value square\r\n        self.sv_label = QLabel()\r\n        self.sv_label.setCursor(Qt.CrossCursor)\r\n        canvas_layout.addWidget(self.sv_label)\r\n        self.sv_label.mousePressEvent = self._on_sv_press  # type: ignore\r\n        self.sv_label.mouseMoveEvent = self._on_sv_move  # type: ignore\r\n\r\n        # value slider\r\n        self.val_slider = QSlider(Qt.Horizontal)\r\n        self.val_slider.setRange(0, 100)\r\n        self.val_slider.setValue(100)\r\n        self.val_slider.valueChanged.connect(self._on_val_change)\r\n        self.val_slider.setStyleSheet(\r\n            f\"background-color:{COLORS['slider_bg']}; color:{COLORS['label_fg']}\"\r\n        )\r\n        main_layout.addWidget(self.val_slider)\r\n\r\n        info_layout = QHBoxLayout()\r\n        main_layout.addLayout(info_layout)\r\n\r\n        self.preview = QLabel()\r\n        self.preview.setFixedSize(40, 40)\r\n        self.preview.setStyleSheet(\r\n            f\"background-color:{COLORS['bg_main']};\"\r\n            f\"border:2px solid {COLORS['preview_bd']}\"\r\n        )\r\n        info_layout.addWidget(self.preview)\r\n\r\n        self.lbl = QLabel(\"点击取色\")\r\n        self.lbl.setStyleSheet(f\"color:{COLORS['label_fg']}\")\r\n        info_layout.addWidget(self.lbl)\r\n        info_layout.addStretch()\r\n\r\n        # history window\r\n        self.history_win = QWidget()\r\n        self.history_win.setWindowTitle(\"历史取色记录\")\r\n        self.history_win.setFixedSize(360, 530)\r\n        self.history_win.setStyleSheet(f\"background-color:{COLORS['bg_main']}\")\r\n        h_layout = QVBoxLayout(self.history_win)\r\n        self.history_lb = QListWidget()\r\n        self.history_lb.setStyleSheet(\r\n            f\"background-color:{COLORS['slider_bg']}; color:{COLORS['label_fg']}\"\r\n        )\r\n        h_layout.addWidget(self.history_lb)\r\n        self.record_btn = QPushButton(\"记录\")\r\n        self.record_btn.setStyleSheet(\r\n            f\"background-color:{COLORS['slider_bg']}; color:{COLORS['label_fg']}\"\r\n        )\r\n        self.record_btn.clicked.connect(self._record_color)\r\n        h_layout.addWidget(self.record_btn)\r\n        self.history_win.show()\r\n\r\n    # ---------------------------------------------------------------- events\r\n    def _draw_marker(self, base: QPixmap, x: int, y: int) -> QPixmap:\r\n        pm = QPixmap(base)\r\n        painter = QPainter(pm)\r\n        painter.setPen(QPen(QColor(\"white\"), 2))\r\n        r = 8\r\n        painter.drawLine(x - r, y, x + r, y)\r\n        painter.drawLine(x, y - r, x, y + r)\r\n        painter.end()\r\n        return pm\r\n\r\n    def _on_hue_press(self, event) -> None:\r\n        self._update_hue(event.pos().x(), event.pos().y())\r\n        self.hue_label.setPixmap(\r\n            self._draw_marker(self.hue_base, event.pos().x(), event.pos().y())\r\n        )\r\n\r\n    def _on_hue_move(self, event) -> None:\r\n        if event.buttons() & Qt.LeftButton:\r\n            self._on_hue_press(event)\r\n\r\n    def _on_sv_press(self, event) -> None:\r\n        self._update_sv_color(event.pos().x(), event.pos().y())\r\n        if self.sv_pixmap is not None:\r\n            self.sv_label.setPixmap(\r\n                self._draw_marker(self.sv_pixmap, event.pos().x(), event.pos().y())\r\n            )\r\n\r\n    def _on_sv_move(self, event) -> None:\r\n        if event.buttons() & Qt.LeftButton:\r\n            self._on_sv_press(event)\r\n\r\n    # --------------------------------------------------------------- helpers\r\n    def _update_hue(self, x: int, y: int) -> None:\r\n        dx, dy = x - self.wheel_r, y - self.wheel_r\r\n        if np.hypot(dx, dy) <= self.wheel_r:\r\n            self.cur_hue = ((np.degrees(np.arctan2(dy, dx)) + 360) % 360) / 360\r\n            self.update_sv()\r\n\r\n    def _update_sv_color(self, x: int, y: int) -> None:\r\n        if 0 <= x < self.sv_size and 0 <= y < self.sv_size:\r\n            s = x / (self.sv_size - 1)\r\n            v = 1 - y / (self.sv_size - 1)\r\n            self._update_color(s, v * self.cur_val)\r\n\r\n    def _on_val_change(self, value: int) -> None:\r\n        self.cur_val = value / 100.0\r\n        self.update_sv()\r\n\r\n    def update_sv(self) -> None:\r\n        img = gen_sv_square(self.sv_size, self.cur_hue, self.cur_val)\r\n        self.sv_pixmap = pil_to_pixmap(img)\r\n        self.sv_label.setPixmap(self.sv_pixmap)\r\n\r\n    def _update_color(self, s: float, v: float) -> None:\r\n        r, g, b = [int(255 * c) for c in colorsys.hsv_to_rgb(self.cur_hue, s, v)]\r\n        hexc = f\"#{r:02x}{g:02x}{b:02x}\"\r\n        self.last_hex = hexc\r\n        self.preview.setStyleSheet(\r\n            f\"background-color:{hexc}; border:2px solid {COLORS['preview_bd']}\"\r\n        )\r\n        self.lbl.setText(f\"RGB=({r},{g},{b})   HEX={hexc}\")\r\n\r\n    def _record_color(self) -> None:\r\n        if self.last_hex:\r\n            self.history_lb.insertItem(0, self.last_hex)\r\n            item = self.history_lb.item(0)\r\n            item.setForeground(QColor(self.last_hex))\r\n            if self.history_lb.count() > 20:\r\n                self.history_lb.takeItem(20)\r\n\r\n\r\ndef main() -> None:\r\n    app = QApplication(sys.argv)\r\n    win = ColorPickerWindow()\r\n    win.show()\r\n    app.exec()\r\n\r\n\r\nif __name__ == \"__main__\":\r\n    main()\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/plugins/color_picker/color_picker_app.py b/nana_2/plugins/color_picker/color_picker_app.py
+--- a/nana_2/plugins/color_picker/color_picker_app.py	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/plugins/color_picker/color_picker_app.py	(date 1751870558401)
+@@ -1,241 +1,197 @@
+-"""Simple color picker implemented with PySide6."""
+-
+-import sys
++import tkinter as tk
++from PIL import Image, ImageTk
++import numpy as np
+ import colorsys
+ import ctypes
+ 
+-import numpy as np
+-from PIL import Image
+-from PySide6.QtCore import Qt
+-from PySide6.QtGui import QPixmap, QImage, QPainter, QPen, QColor
+-from PySide6.QtWidgets import (
+-    QApplication,
+-    QWidget,
+-    QLabel,
+-    QSlider,
+-    QListWidget,
+-    QPushButton,
+-    QVBoxLayout,
+-    QHBoxLayout,
+-)
+-
+-
+ try:
+     ctypes.windll.shcore.SetProcessDpiAwareness(1)
+ except Exception:
+     pass
+ 
+-
+ COLORS = {
+-    "bg_main": "#212121",
+-    "canvas_bg": "#212121",
+-    "slider_bg": "#414141",
+-    "slider_trough": "#515151",
+-    "label_fg": "#cbcbcb",
+-    "preview_bd": "#ffffff",
++    'bg_main': '#212121',
++    'canvas_bg': '#212121',
++    'slider_bg': '#414141',
++    'slider_trough': '#515151',
++    'label_fg': '#cbcbcb',
++    'preview_bd': '#ffffff',
+ }
+ 
++last_hex = None
+ 
+-def gen_hue_wheel(dia: int) -> Image.Image:
+-    """Generate a hue circle as a PIL image."""
++
++def gen_hue_wheel(dia):
+     data = np.zeros((dia, dia, 3), dtype=np.uint8)
+-    cx, cy = dia / 2, dia / 2
+-    r_max = dia / 2
++    cx, cy = dia/2, dia/2
++    r_max = dia/2
+     for y in range(dia):
+         for x in range(dia):
+-            dx, dy = x - cx, y - cy
++            dx, dy = x-cx, y-cy
+             r = np.hypot(dx, dy)
+             if r <= r_max:
+                 h = (np.degrees(np.arctan2(dy, dx)) + 360) % 360 / 360
+                 rgb = colorsys.hsv_to_rgb(h, 1.0, 1.0)
+-                data[y, x] = [int(255 * c) for c in rgb]
++                data[y, x] = [int(255*c) for c in rgb]
+     return Image.fromarray(data)
+ 
+ 
+-def gen_sv_square(size: int, hue: float, val: float) -> Image.Image:
+-    """Generate a saturation/value square as a PIL image."""
++def gen_sv_square(size, hue, val):
+     data = np.zeros((size, size, 3), dtype=np.uint8)
+     for i in range(size):
+         for j in range(size):
+-            s = j / (size - 1)
+-            v = 1 - i / (size - 1)
++            s = j/(size - 1)
++            v = 1 - i/(size - 1)
+             rgb = colorsys.hsv_to_rgb(hue, s, v * val)
+-            data[i, j] = [int(255 * c) for c in rgb]
++            data[i, j] = [int(255*c) for c in rgb]
+     return Image.fromarray(data)
+ 
+ 
+-def pil_to_pixmap(img: Image.Image) -> QPixmap:
+-    """Convert PIL image to Qt pixmap."""
+-    img = img.convert("RGBA")
+-    data = img.tobytes("raw", "RGBA")
+-    qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+-    return QPixmap.fromImage(qimg)
++def on_hue_click(evt):
++    global cur_hue
++    dx, dy = evt.x - wheel_r, evt.y - wheel_r
++    if np.hypot(dx, dy) <= wheel_r:
++        cur_hue = (np.degrees(np.arctan2(dy, dx)) + 360) % 360 / 360
++        update_sv()
+ 
+ 
+-class ColorPickerWindow(QWidget):
+-    """Main window for the color picker."""
++def on_sv_click(evt):
++    if 0 <= evt.x < sv_size and 0 <= evt.y < sv_size:
++        s = evt.x/(sv_size - 1)
++        v = 1 - evt.y/(sv_size - 1)
++        update_color(s, v * cur_val)
+ 
+-    def __init__(self) -> None:
+-        super().__init__()
+-        self.wheel_dia = 300
+-        self.wheel_r = self.wheel_dia // 2
+-        self.sv_size = 300
+-        self.cur_hue = 0.0
+-        self.cur_val = 1.0
+-        self.last_hex: str | None = None
+-        self._setup_ui()
+-        self.update_sv()
+ 
+-    # ------------------------------------------------------------------ UI
+-    def _setup_ui(self) -> None:
+-        self.setWindowTitle("自由取色器 - lin酱版")
+-        self.setFixedSize(650, 480)
+-        self.setStyleSheet(f"background-color:{COLORS['bg_main']}")
++def on_val_change(val):
++    global cur_val
++    cur_val = float(val)
++    update_sv()
+ 
+-        main_layout = QVBoxLayout(self)
+-        canvas_layout = QHBoxLayout()
+-        main_layout.addLayout(canvas_layout)
+ 
+-        # hue wheel
+-        self.hue_base = pil_to_pixmap(gen_hue_wheel(self.wheel_dia))
+-        self.hue_label = QLabel()
+-        self.hue_label.setPixmap(self.hue_base)
+-        self.hue_label.setCursor(Qt.CrossCursor)
+-        canvas_layout.addWidget(self.hue_label)
+-        self.hue_label.mousePressEvent = self._on_hue_press  # type: ignore
+-        self.hue_label.mouseMoveEvent = self._on_hue_move  # type: ignore
++def update_sv():
++    global sv_tkimg
++    img = gen_sv_square(sv_size, cur_hue, cur_val)
++    sv_tkimg = ImageTk.PhotoImage(img)
++    sv_canvas.itemconfig(sv_img_id, image=sv_tkimg)
+ 
+-        # saturation/value square
+-        self.sv_label = QLabel()
+-        self.sv_label.setCursor(Qt.CrossCursor)
+-        canvas_layout.addWidget(self.sv_label)
+-        self.sv_label.mousePressEvent = self._on_sv_press  # type: ignore
+-        self.sv_label.mouseMoveEvent = self._on_sv_move  # type: ignore
+ 
+-        # value slider
+-        self.val_slider = QSlider(Qt.Horizontal)
+-        self.val_slider.setRange(0, 100)
+-        self.val_slider.setValue(100)
+-        self.val_slider.valueChanged.connect(self._on_val_change)
+-        self.val_slider.setStyleSheet(
+-            f"background-color:{COLORS['slider_bg']}; color:{COLORS['label_fg']}"
+-        )
+-        main_layout.addWidget(self.val_slider)
++def update_color(s, v):
++    global last_hex
++    r, g, b = [int(255*c) for c in colorsys.hsv_to_rgb(cur_hue, s, v)]
++    hexc = f'#{r:02x}{g:02x}{b:02x}'
++    last_hex = hexc
++    preview.config(bg=hexc)
++    lbl.config(text=f'RGB=({r},{g},{b})   HEX={hexc}')
+ 
+-        info_layout = QHBoxLayout()
+-        main_layout.addLayout(info_layout)
+ 
+-        self.preview = QLabel()
+-        self.preview.setFixedSize(40, 40)
+-        self.preview.setStyleSheet(
+-            f"background-color:{COLORS['bg_main']};"
+-            f"border:2px solid {COLORS['preview_bd']}"
+-        )
+-        info_layout.addWidget(self.preview)
++def record_color():
++    if last_hex:
++        history_lb.insert(0, last_hex)
++        history_lb.itemconfig(0, fg=last_hex)
++        if history_lb.size() > 20:
++            history_lb.delete(20, tk.END)
++
+ 
+-        self.lbl = QLabel("点击取色")
+-        self.lbl.setStyleSheet(f"color:{COLORS['label_fg']}")
+-        info_layout.addWidget(self.lbl)
+-        info_layout.addStretch()
++R = 8
+ 
+-        # history window
+-        self.history_win = QWidget()
+-        self.history_win.setWindowTitle("历史取色记录")
+-        self.history_win.setFixedSize(360, 530)
+-        self.history_win.setStyleSheet(f"background-color:{COLORS['bg_main']}")
+-        h_layout = QVBoxLayout(self.history_win)
+-        self.history_lb = QListWidget()
+-        self.history_lb.setStyleSheet(
+-            f"background-color:{COLORS['slider_bg']}; color:{COLORS['label_fg']}"
+-        )
+-        h_layout.addWidget(self.history_lb)
+-        self.record_btn = QPushButton("记录")
+-        self.record_btn.setStyleSheet(
+-            f"background-color:{COLORS['slider_bg']}; color:{COLORS['label_fg']}"
+-        )
+-        self.record_btn.clicked.connect(self._record_color)
+-        h_layout.addWidget(self.record_btn)
+-        self.history_win.show()
++def on_hue_drag(evt):
++    hue_canvas.delete('marker')
++    on_hue_click(evt)
++    hue_canvas.create_line(
++        evt.x-R, evt.y, evt.x+R, evt.y,
++        fill='white', width=2, capstyle='butt', tags='marker'
++    )
++    hue_canvas.create_line(
++        evt.x, evt.y-R, evt.x, evt.y+R,
++        fill='white', width=2, capstyle='butt', tags='marker'
++    )
+ 
+-    # ---------------------------------------------------------------- events
+-    def _draw_marker(self, base: QPixmap, x: int, y: int) -> QPixmap:
+-        pm = QPixmap(base)
+-        painter = QPainter(pm)
+-        painter.setPen(QPen(QColor("white"), 2))
+-        r = 8
+-        painter.drawLine(x - r, y, x + r, y)
+-        painter.drawLine(x, y - r, x, y + r)
+-        painter.end()
+-        return pm
+ 
+-    def _on_hue_press(self, event) -> None:
+-        self._update_hue(event.pos().x(), event.pos().y())
+-        self.hue_label.setPixmap(
+-            self._draw_marker(self.hue_base, event.pos().x(), event.pos().y())
+-        )
+-
+-    def _on_hue_move(self, event) -> None:
+-        if event.buttons() & Qt.LeftButton:
+-            self._on_hue_press(event)
+-
+-    def _on_sv_press(self, event) -> None:
+-        self._update_sv_color(event.pos().x(), event.pos().y())
+-        if self.sv_pixmap is not None:
+-            self.sv_label.setPixmap(
+-                self._draw_marker(self.sv_pixmap, event.pos().x(), event.pos().y())
+-            )
++def on_sv_drag(evt):
++    sv_canvas.delete('marker')
++    on_sv_click(evt)
++    sv_canvas.create_line(
++        evt.x-R, evt.y, evt.x+R, evt.y,
++        fill='white', width=2, capstyle='butt', tags='marker'
++    )
++    sv_canvas.create_line(
++        evt.x, evt.y-R, evt.x, evt.y+R,
++        fill='white', width=2, capstyle='butt', tags='marker'
++    )
+ 
+-    def _on_sv_move(self, event) -> None:
+-        if event.buttons() & Qt.LeftButton:
+-            self._on_sv_press(event)
+-
+-    # --------------------------------------------------------------- helpers
+-    def _update_hue(self, x: int, y: int) -> None:
+-        dx, dy = x - self.wheel_r, y - self.wheel_r
+-        if np.hypot(dx, dy) <= self.wheel_r:
+-            self.cur_hue = ((np.degrees(np.arctan2(dy, dx)) + 360) % 360) / 360
+-            self.update_sv()
+ 
+-    def _update_sv_color(self, x: int, y: int) -> None:
+-        if 0 <= x < self.sv_size and 0 <= y < self.sv_size:
+-            s = x / (self.sv_size - 1)
+-            v = 1 - y / (self.sv_size - 1)
+-            self._update_color(s, v * self.cur_val)
++wheel_dia = 300
++wheel_r = wheel_dia // 2
++sv_size = 300
++cur_hue = 0.0
++cur_val = 1.0
+ 
+-    def _on_val_change(self, value: int) -> None:
+-        self.cur_val = value / 100.0
+-        self.update_sv()
++root = tk.Tk()
++root.title("自由取色器 - lin酱版")
++root.geometry('650x480')
++root.config(bg=COLORS['bg_main'])
++root.resizable(False, False)
+ 
+-    def update_sv(self) -> None:
+-        img = gen_sv_square(self.sv_size, self.cur_hue, self.cur_val)
+-        self.sv_pixmap = pil_to_pixmap(img)
+-        self.sv_label.setPixmap(self.sv_pixmap)
++hue_img = ImageTk.PhotoImage(gen_hue_wheel(wheel_dia))
++hue_canvas = tk.Canvas(
++    root, width=wheel_dia, height=wheel_dia,
++    bg=COLORS['canvas_bg'], bd=0, highlightthickness=0
++)
++hue_canvas.grid(row=0, column=0, padx=10, pady=10)
++hue_canvas.create_image(0, 0, anchor='nw', image=hue_img)
++hue_canvas.bind('<Button-1>', on_hue_click)
++hue_canvas.bind('<B1-Motion>', on_hue_drag)
++hue_canvas.config(cursor='tcross')
+ 
+-    def _update_color(self, s: float, v: float) -> None:
+-        r, g, b = [int(255 * c) for c in colorsys.hsv_to_rgb(self.cur_hue, s, v)]
+-        hexc = f"#{r:02x}{g:02x}{b:02x}"
+-        self.last_hex = hexc
+-        self.preview.setStyleSheet(
+-            f"background-color:{hexc}; border:2px solid {COLORS['preview_bd']}"
+-        )
+-        self.lbl.setText(f"RGB=({r},{g},{b})   HEX={hexc}")
++sv_canvas = tk.Canvas(
++    root, width=sv_size, height=sv_size,
++    bg=COLORS['canvas_bg'], bd=0, highlightthickness=0
++)
++sv_canvas.grid(row=0, column=1, padx=10, pady=10)
++sv_tkimg = None
++sv_img_id = sv_canvas.create_image(0, 0, anchor='nw')
++sv_canvas.bind('<Button-1>', on_sv_click)
++sv_canvas.bind('<B1-Motion>', on_sv_drag)
++sv_canvas.config(cursor='tcross')
+ 
+-    def _record_color(self) -> None:
+-        if self.last_hex:
+-            self.history_lb.insertItem(0, self.last_hex)
+-            item = self.history_lb.item(0)
+-            item.setForeground(QColor(self.last_hex))
+-            if self.history_lb.count() > 20:
+-                self.history_lb.takeItem(20)
++val_slider = tk.Scale(
++    root, bg=COLORS['slider_bg'], bd=0,
++    from_=0.0, to=1.0, resolution=0.01,
++    orient='horizontal', label='明度 (V)',
++    fg=COLORS['label_fg'], troughcolor=COLORS['slider_trough'],
++    highlightthickness=0, relief='flat', command=on_val_change
++)
++val_slider.set(1.0)
++val_slider.grid(row=1, column=0, columnspan=2, sticky='we', padx=10)
+ 
++preview = tk.Label(
++    root, text="", bg=COLORS['bg_main'], bd=2,
++    relief='solid', highlightbackground=COLORS['preview_bd']
++)
++preview.place(relx=0.05, rely=0.95, anchor='sw', width=40, height=40)
++lbl = tk.Label(
++    root, text="点击取色", font=("Arial", 14),
++    fg=COLORS['label_fg'], bg=COLORS['bg_main']
++)
++lbl.grid(row=2, column=0, columnspan=2, pady=10)
+ 
+-def main() -> None:
+-    app = QApplication(sys.argv)
+-    win = ColorPickerWindow()
+-    win.show()
+-    app.exec()
++history_win = tk.Toplevel(root)
++history_win.title("历史取色记录")
++history_win.geometry('360x530')
++history_win.config(bg=COLORS['bg_main'])
++history_win.resizable(False, False)
+ 
++history_lb = tk.Listbox(
++    history_win, bg=COLORS['slider_bg'], fg=COLORS['label_fg'],
++    bd=1, highlightthickness=0, width=12, height=16
++)
++history_lb.pack(padx=10, pady=(10, 0), fill='both', expand=True)
+ 
+-if __name__ == "__main__":
+-    main()
++record_btn = tk.Button(
++    history_win, text='记录', command=record_color,
++    bg=COLORS['slider_bg'], fg=COLORS['label_fg'], bd=0
++)
++record_btn.pack(side='bottom', pady=10, fill='x')
+ 
++update_sv()
++root.mainloop()
+Index: nana_2/Gui/windows/main_window.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># Gui/windows/main_window.py\r\n\r\nimport queue\r\nfrom PySide6.QtWidgets import (\r\n    QMainWindow, QTextEdit, QLineEdit, QPushButton, QWidget,\r\n    QVBoxLayout, QHBoxLayout, QMessageBox\r\n)\r\nfrom PySide6.QtGui import QPixmap, QIcon, QFont\r\nfrom PySide6.QtCore import QTimer\r\nfrom ..config import gui_config\r\nfrom ..handle import event_handlers\r\nfrom global_config import settings\r\n\r\n\r\nclass MainWindow(QMainWindow):\r\n    def __init__(self, app_controller):\r\n        \"\"\"主窗口构造函数\"\"\"\r\n        super().__init__()\r\n\r\n        self.settings = settings\r\n        self.controller = app_controller\r\n        self.gui_config = gui_config\r\n\r\n\r\n        self.note_listbox = None\r\n\r\n        # 加载按钮图片\r\n        self.img_send_normal = QPixmap(self.gui_config.IMG_SEND_NORMAL)\r\n        self.img_send_hover = QPixmap(self.gui_config.IMG_SEND_HOVER)\r\n        self.img_send_press = QPixmap(self.gui_config.IMG_SEND_PRESS)\r\n        if self.img_send_normal.isNull():\r\n            QMessageBox.critical(self, \"资源错误\", \"找不到按钮图片文件！\")\r\n\r\n        # --- 1. 基础窗口设置 ---\r\n        self.setWindowTitle(self.gui_config.APP_TITLE)\r\n        self.resize(1100, 800)\r\n        self.setStyleSheet(f\"background-color: {self.gui_config.BG_MAIN};\")\r\n\r\n        # --- 2. 状态与通信 ---\r\n        self.ui_queue = queue.Queue()\r\n\r\n        # --- 3. 创建界面和绑定事件 ---\r\n        self.handler = event_handlers.EventHandler(self, self.controller)\r\n        self._create_widgets()\r\n        self.handler.bind_events()\r\n        self.handler.add_placeholder()\r\n\r\n        # --- 4. 启动UI更新循环 ---\r\n        self.timer = QTimer(self)\r\n        self.timer.timeout.connect(self.process_ui_queue)\r\n        self.timer.start(100)\r\n\r\n        # --- 5. 初始化完成 ---\r\n        self.user_input_entry.setFocus()\r\n\r\n        self.show()\r\n\r\n\r\n    def _create_widgets(self):\r\n\r\n        central_widget = QWidget()\r\n        self.setCentralWidget(central_widget)\r\n\r\n        main_layout = QVBoxLayout(central_widget)\r\n        main_layout.setContentsMargins(20, 20, 20, 20)\r\n        main_layout.setSpacing(0)\r\n\r\n        # 聊天显示框\r\n        self.chat_display = QTextEdit()\r\n        self.chat_display.setReadOnly(True)\r\n        self.chat_display.setFont(QFont(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE))\r\n        self.chat_display.setStyleSheet(\r\n            f\"background-color: {self.gui_config.BG_INPUT};\"\r\n            f\"color: {self.gui_config.FG_TEXT};\"\r\n        )\r\n        main_layout.addWidget(self.chat_display, 1)\r\n\r\n        # 输入框和发送按钮\r\n        input_layout = QHBoxLayout()\r\n        main_layout.addLayout(input_layout)\r\n\r\n        self.user_input_entry = QLineEdit()\r\n        self.user_input_entry.setFont(QFont(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE))\r\n        self.user_input_entry.setStyleSheet(\r\n            f\"background-color: {self.gui_config.BG_INPUT};\"\r\n            f\"color: {self.gui_config.FG_TEXT};\"\r\n        )\r\n        input_layout.addWidget(self.user_input_entry, 1)\r\n\r\n        self.send_button = QPushButton()\r\n        if not self.img_send_normal.isNull():\r\n            self.send_button.setIcon(QIcon(self.img_send_normal))\r\n        else:\r\n            self.send_button.setText(\"发送\")\r\n        self.send_button.setStyleSheet(f\"background-color: {self.gui_config.BG_MAIN}; border: none;\")\r\n        input_layout.addWidget(self.send_button)\r\n\r\n    def append_message(self, sender, message, sender_tag):\r\n        color_map = {\r\n            \"user_sender\": \"#81C784\",\r\n            \"nana_sender\": \"#82AAFF\",\r\n            \"error_sender\": \"#FF5370\",\r\n        }\r\n        color = color_map.get(sender_tag, self.gui_config.FG_TEXT)\r\n        self.chat_display.setReadOnly(False)\r\n        self.chat_display.append(\r\n            f'<span style=\"color:{color}; font-weight:bold\">{sender}:</span> {message}<br/>'\r\n        )\r\n        self.chat_display.setReadOnly(True)\r\n\r\n    def set_ui_state(self, state: str):\r\n        \"\"\"\r\n        设置UI的交互状态，'enabled' 或 'disabled'。\r\n        \"\"\"\r\n        enabled = state == 'enabled'\r\n        self.user_input_entry.setEnabled(enabled)\r\n        self.send_button.setEnabled(enabled)\r\n\r\n    def process_ui_queue(self):\r\n        \"\"\"\r\n        处理消息队列，在主线程中安全地更新UI。\r\n        \"\"\"\r\n        try:\r\n            while not self.ui_queue.empty():\r\n                msg_type, data = self.ui_queue.get_nowait()\r\n\r\n                # 在这里根据消息类型，调用不同的UI更新方法\r\n                if msg_type == \"APPEND_MESSAGE\":\r\n                    sender, message, tag = data\r\n                    self.append_message(sender, message, tag)\r\n                elif msg_type == \"SET_STATE\":\r\n                    self.set_ui_state(data)\r\n                # elif msg_type == \"SHOW_ERROR\":\r\n                #     messagebox.showerror(\"错误\", data)\r\n                # ... 在这里可以定义和处理更多类型的UI更新消息 ...\r\n        finally:\r\n            pass  # QTimer 会持续调用，无需手动重新启动\r\n\r\n    def on_closing(self):\r\n\r\n        self.is_running = False\r\n\r\n        self.controller.on_app_exit()\r\n\r\n    def closeEvent(self, event):\r\n        self.on_closing()\r\n        event.accept()\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/Gui/windows/main_window.py b/nana_2/Gui/windows/main_window.py
+--- a/nana_2/Gui/windows/main_window.py	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/Gui/windows/main_window.py	(date 1751869739542)
+@@ -1,120 +1,116 @@
+ # Gui/windows/main_window.py
+ 
++import tkinter as tk
+ import queue
+-from PySide6.QtWidgets import (
+-    QMainWindow, QTextEdit, QLineEdit, QPushButton, QWidget,
+-    QVBoxLayout, QHBoxLayout, QMessageBox
+-)
+-from PySide6.QtGui import QPixmap, QIcon, QFont
+-from PySide6.QtCore import QTimer
++from tkinter import messagebox, DISABLED, NORMAL, END
+ from ..config import gui_config
+ from ..handle import event_handlers
+ from global_config import settings
+ 
+-
+-class MainWindow(QMainWindow):
+-    def __init__(self, app_controller):
+-        """主窗口构造函数"""
+-        super().__init__()
+-
++class MainWindow:
++    def __init__(self, master: tk.Tk, app_controller):
++        """
++        主窗口的构造函数
++        :param master: tk.Tk() 的根实例
++        :param app_controller: 主应用程序的控制器实例，用于通信
++        """
+         self.settings = settings
+-        self.controller = app_controller
+-        self.gui_config = gui_config
+-
+-
++        self.master = master
++        self.controller = app_controller  # 外部逻辑通信的桥梁
++        self.gui_config = gui_config  # 加载UI配置
+         self.note_listbox = None
+-
+-        # 加载按钮图片
+-        self.img_send_normal = QPixmap(self.gui_config.IMG_SEND_NORMAL)
+-        self.img_send_hover = QPixmap(self.gui_config.IMG_SEND_HOVER)
+-        self.img_send_press = QPixmap(self.gui_config.IMG_SEND_PRESS)
+-        if self.img_send_normal.isNull():
+-            QMessageBox.critical(self, "资源错误", "找不到按钮图片文件！")
+-
++        try:
++            # 使用 gui_config 中的路径
++            self.img_send_normal = tk.PhotoImage(file=self.gui_config.IMG_SEND_NORMAL)
++            self.img_send_hover = tk.PhotoImage(file=self.gui_config.IMG_SEND_HOVER)
++            self.img_send_press = tk.PhotoImage(file=self.gui_config.IMG_SEND_PRESS)
++        except FileNotFoundError as e:
++            messagebox.showerror("资源错误", f"找不到按钮图片文件！\n{e}")
++            self.img_send_normal = None
+         # --- 1. 基础窗口设置 ---
+-        self.setWindowTitle(self.gui_config.APP_TITLE)
+-        self.resize(1100, 800)
+-        self.setStyleSheet(f"background-color: {self.gui_config.BG_MAIN};")
++        self.master.title(self.gui_config.APP_TITLE)
++        self.master.geometry("1100x800")
++        self.master.config(bg=self.gui_config.BG_MAIN)
++        self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
+ 
+         # --- 2. 状态与通信 ---
++        # 这个队列是线程安全的，用于从任何地方向GUI发送更新任务
+         self.ui_queue = queue.Queue()
+ 
+         # --- 3. 创建界面和绑定事件 ---
+         self.handler = event_handlers.EventHandler(self, self.controller)
+         self._create_widgets()
+         self.handler.bind_events()
+-        self.handler.add_placeholder()
++        self.handler.add_placeholder()  # 设置初始输入框提示
+ 
+         # --- 4. 启动UI更新循环 ---
+-        self.timer = QTimer(self)
+-        self.timer.timeout.connect(self.process_ui_queue)
+-        self.timer.start(100)
++        # 这个循环会定期检查队列里有没有新任务，并执行它们
++        self.master.after(100, self.process_ui_queue)
+ 
+         # --- 5. 初始化完成 ---
+-        self.user_input_entry.setFocus()
+-
+-        self.show()
++        self.user_input_entry.focus_set()
+ 
+ 
+     def _create_widgets(self):
+ 
+-        central_widget = QWidget()
+-        self.setCentralWidget(central_widget)
+-
+-        main_layout = QVBoxLayout(central_widget)
+-        main_layout.setContentsMargins(20, 20, 20, 20)
+-        main_layout.setSpacing(0)
+ 
+-        # 聊天显示框
+-        self.chat_display = QTextEdit()
+-        self.chat_display.setReadOnly(True)
+-        self.chat_display.setFont(QFont(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE))
+-        self.chat_display.setStyleSheet(
+-            f"background-color: {self.gui_config.BG_INPUT};"
+-            f"color: {self.gui_config.FG_TEXT};"
++        chat_frame = tk.Frame(self.master, bg=self.gui_config.BG_MAIN)
++        chat_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
++        chat_frame.rowconfigure(0, weight=1)
++        chat_frame.columnconfigure(0, weight=1)
++        self.chat_display = tk.Text(
++            chat_frame, wrap=tk.WORD, state=DISABLED,
++            font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE),
++            bg=self.gui_config.BG_INPUT, fg=self.gui_config.FG_TEXT, insertbackground=self.gui_config.CURSOR_COLOR, bd=0
+         )
+-        main_layout.addWidget(self.chat_display, 1)
++        self.chat_display.grid(row=0, column=0, sticky="nsew", pady=(0, 24))
++        self.chat_display.tag_config("user_sender", foreground="#81C784",
++                                     font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE, "bold"))
++        self.chat_display.tag_config("nana_sender", foreground="#82AAFF",
++                                     font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE, "bold"))
++        self.chat_display.tag_config("error_sender", foreground="#FF5370",
++                                     font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE, "bold"))
+ 
+-        # 输入框和发送按钮
+-        input_layout = QHBoxLayout()
+-        main_layout.addLayout(input_layout)
++        input_frame = tk.Frame(chat_frame, bg=self.gui_config.BG_MAIN)
++        input_frame.grid(row=1, column=0, sticky="ew")
++        input_frame.columnconfigure(0, weight=1)
+ 
+-        self.user_input_entry = QLineEdit()
+-        self.user_input_entry.setFont(QFont(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE))
+-        self.user_input_entry.setStyleSheet(
+-            f"background-color: {self.gui_config.BG_INPUT};"
+-            f"color: {self.gui_config.FG_TEXT};"
++        self.user_input_entry = tk.Entry(
++            input_frame,
++            font=(self.gui_config.GENERAL_FONT_FAMILY, self.gui_config.GENERAL_FONT_SIZE),
++            bg=self.gui_config.BG_INPUT,
++            fg=self.gui_config.FG_TEXT,
++            disabledbackground=self.gui_config.BG_INPUT_DISABLED,
++            disabledforeground=self.gui_config.FG_TEXT_DISABLED,
++            insertbackground=self.gui_config.CURSOR_COLOR,
++            bd=0,
++            relief=tk.FLAT
+         )
+-        input_layout.addWidget(self.user_input_entry, 1)
++        self.user_input_entry.grid(row=0, column=0, sticky="ew", ipady=16, padx=(0, 10))
+ 
+-        self.send_button = QPushButton()
+-        if not self.img_send_normal.isNull():
+-            self.send_button.setIcon(QIcon(self.img_send_normal))
++        if self.img_send_normal:
++            self.send_button = tk.Button(
++                input_frame, image=self.img_send_normal, command=self.handler.on_send_click, bg=self.gui_config.BG_MAIN,
++                activebackground=self.gui_config.BG_MAIN, relief=tk.FLAT, bd=0, cursor="hand2"
++            )
+         else:
+-            self.send_button.setText("发送")
+-        self.send_button.setStyleSheet(f"background-color: {self.gui_config.BG_MAIN}; border: none;")
+-        input_layout.addWidget(self.send_button)
++            self.send_button = tk.Button(input_frame, text="发送", command=self.handler.on_send_click)
++        self.send_button.grid(row=0, column=1, ipady=4)
+ 
+-    def append_message(self, sender, message, sender_tag):
+-        color_map = {
+-            "user_sender": "#81C784",
+-            "nana_sender": "#82AAFF",
+-            "error_sender": "#FF5370",
+-        }
+-        color = color_map.get(sender_tag, self.gui_config.FG_TEXT)
+-        self.chat_display.setReadOnly(False)
+-        self.chat_display.append(
+-            f'<span style="color:{color}; font-weight:bold">{sender}:</span> {message}<br/>'
+-        )
+-        self.chat_display.setReadOnly(True)
++    def append_message(self, sender, message, sender_tag):   # ... (这部分函数内容不变)
++        self.chat_display.config(state=NORMAL)
++        self.chat_display.insert(END, f"{sender}: ", (sender_tag,))
++        self.chat_display.insert(END, f"{message}\n\n")
++        self.chat_display.config(state=DISABLED)
++        self.chat_display.see(END)
+ 
+     def set_ui_state(self, state: str):
+         """
+         设置UI的交互状态，'enabled' 或 'disabled'。
+         """
+-        enabled = state == 'enabled'
+-        self.user_input_entry.setEnabled(enabled)
+-        self.send_button.setEnabled(enabled)
++        tk_state = NORMAL if state == 'enabled' else DISABLED
++        self.user_input_entry.config(state=tk_state)
++        self.send_button.config(state=tk_state)
+ 
+     def process_ui_queue(self):
+         """
+@@ -134,15 +130,10 @@
+                 #     messagebox.showerror("错误", data)
+                 # ... 在这里可以定义和处理更多类型的UI更新消息 ...
+         finally:
+-            pass  # QTimer 会持续调用，无需手动重新启动
++            self.master.after(100, self.process_ui_queue)
+ 
+     def on_closing(self):
+ 
+         self.is_running = False
+-
+-        self.controller.on_app_exit()
+-
+-    def closeEvent(self, event):
+-        self.on_closing()
+-        event.accept()
+-
++        self.controller.on_app_exit()  # 通知控制器应用要退出了
++        self.master.destroy()
+\ No newline at end of file
+Index: nana_2/Gui/handle/event_handlers.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># Gui/handle/event_handlers.py\r\nfrom core.log.logger_config import logger\r\nfrom PySide6.QtCore import QObject, QEvent\r\nfrom PySide6.QtGui import QIcon\r\n\r\n\r\nclass EventHandler(QObject):\r\n    def __init__(self, main_view, controller):\r\n        super().__init__()\r\n        self.view = main_view\r\n        self.controller = controller\r\n        self.placeholder_text = self.view.gui_config.INPUT_PLACEHOLDER\r\n\r\n    def on_send_click(self, event=None):\r\n        \"\"\"\r\n        处理“发送”按钮的点击事件 或 输入框的回车事件。\r\n        \"\"\"\r\n        user_text = self.view.user_input_entry.get().strip()\r\n\r\n        # 如果输入为空或者是占位符，则不执行任何操作\r\n        if not user_text or user_text == self.placeholder_text:\r\n            return\r\n\r\n        logger.info(f\"捕获到用户输入: {user_text}\")\r\n\r\n        # 清空输入框\r\n        self.view.user_input_entry.clear()\r\n\r\n        # 通过控制器将用户输入发送到后端逻辑\r\n        self.controller.process_user_input(user_text)\r\n\r\n        return\r\n\r\n\r\n    def bind_events(self):\r\n        \"\"\"集中绑定所有事件。\"\"\"\r\n        self.view.send_button.clicked.connect(self.on_send_click)\r\n        self.view.send_button.installEventFilter(self)\r\n        self.view.user_input_entry.returnPressed.connect(self.on_input_enter)\r\n        self.view.user_input_entry.installEventFilter(self)\r\n        self.view.chat_display.viewport().installEventFilter(self)\r\n\r\n\r\n    def eventFilter(self, obj, event):\r\n        if obj == self.view.send_button:\r\n            if event.type() == QEvent.Enter and not self.view.img_send_hover.isNull():\r\n                self.view.send_button.setIcon(QIcon(self.view.img_send_hover))\r\n            elif event.type() == QEvent.Leave and not self.view.img_send_normal.isNull():\r\n                self.view.send_button.setIcon(QIcon(self.view.img_send_normal))\r\n            elif event.type() == QEvent.MouseButtonPress and not self.view.img_send_press.isNull():\r\n                self.view.send_button.setIcon(QIcon(self.view.img_send_press))\r\n            elif event.type() == QEvent.MouseButtonRelease:\r\n                if self.view.send_button.rect().contains(event.pos()) and not self.view.img_send_hover.isNull():\r\n                    self.view.send_button.setIcon(QIcon(self.view.img_send_hover))\r\n                elif not self.view.img_send_normal.isNull():\r\n                    self.view.send_button.setIcon(QIcon(self.view.img_send_normal))\r\n        elif obj == self.view.chat_display.viewport() and event.type() == QEvent.Wheel:\r\n            delta = event.angleDelta().y()\r\n            bar = self.view.chat_display.verticalScrollBar()\r\n            bar.setValue(bar.value() - delta)\r\n            return True\r\n        elif obj == self.view.user_input_entry:\r\n            if event.type() == QEvent.FocusIn:\r\n                self.on_entry_focus_in()\r\n            elif event.type() == QEvent.FocusOut:\r\n                self.on_entry_focus_out()\r\n        return super().eventFilter(obj, event)\r\n\r\n    def on_input_enter(self):\r\n        self.on_send_click()\r\n\r\n\r\n    def add_placeholder(self):\r\n        \"\"\"添加占位提示文本\"\"\"\r\n        self.view.user_input_entry.setPlaceholderText(self.placeholder_text)\r\n\r\n    def remove_placeholder(self):\r\n        \"\"\"移除占位提示文本\"\"\"\r\n        self.view.user_input_entry.setPlaceholderText(\"\")\r\n\r\n    def on_entry_focus_in(self, event):\r\n        \"\"\"当输入框获得焦点时触发\"\"\"\r\n        # 如果当前显示的是提示文本，就清空它\r\n        if self.view.user_input_entry.text() == \"\":\r\n            self.remove_placeholder()\r\n\r\n    def on_entry_focus_out(self, event):\r\n        \"\"\"当输入框失去焦点时触发\"\"\"\r\n        # 如果输入框里什么都没有，就重新显示提示文本\r\n        if not self.view.user_input_entry.text():\r\n            self.add_placeholder()\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/Gui/handle/event_handlers.py b/nana_2/Gui/handle/event_handlers.py
+--- a/nana_2/Gui/handle/event_handlers.py	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/Gui/handle/event_handlers.py	(date 1751869739459)
+@@ -1,12 +1,11 @@
+ # Gui/handle/event_handlers.py
+ from core.log.logger_config import logger
+-from PySide6.QtCore import QObject, QEvent
+-from PySide6.QtGui import QIcon
++from tkinter import END
+ 
+ 
+-class EventHandler(QObject):
++class EventHandler:
+     def __init__(self, main_view, controller):
+-        super().__init__()
++
+         self.view = main_view
+         self.controller = controller
+         self.placeholder_text = self.view.gui_config.INPUT_PLACEHOLDER
+@@ -19,75 +18,104 @@
+ 
+         # 如果输入为空或者是占位符，则不执行任何操作
+         if not user_text or user_text == self.placeholder_text:
+-            return
++            return "break"  # 阻止事件继续传播
+ 
+         logger.info(f"捕获到用户输入: {user_text}")
+ 
+         # 清空输入框
+-        self.view.user_input_entry.clear()
++        self.view.user_input_entry.delete(0, END)
+ 
+         # 通过控制器将用户输入发送到后端逻辑
+         self.controller.process_user_input(user_text)
+ 
+-        return
++        return "break"  # 阻止回车键的默认换行行为
+ 
+ 
+     def bind_events(self):
+         """集中绑定所有事件。"""
+-        self.view.send_button.clicked.connect(self.on_send_click)
+-        self.view.send_button.installEventFilter(self)
+-        self.view.user_input_entry.returnPressed.connect(self.on_input_enter)
+-        self.view.user_input_entry.installEventFilter(self)
+-        self.view.chat_display.viewport().installEventFilter(self)
++        # 绑定发送按钮的鼠标事件
++        if self.view.img_send_normal:  # 确保图片按钮存在
++            self.view.send_button.bind("<Enter>", self.on_button_enter)
++            self.view.send_button.bind("<Leave>", self.on_button_leave)
++            self.view.send_button.bind("<Button-1>", self.on_button_press)
++            self.view.send_button.bind("<ButtonRelease-1>", self.on_button_release)
++
++        # 绑定输入框的回车键事件
++        self.view.user_input_entry.bind("<Return>", self.on_input_enter)
++
++        # 为聊天显示框绑定滚轮
++        self.view.chat_display.bind("<MouseWheel>", self.on_chat_scroll)
++        # 兼容Linux系统的滚轮事件
++        self.view.chat_display.bind("<Button-4>", self.on_chat_scroll)
++        self.view.chat_display.bind("<Button-5>", self.on_chat_scroll)
++        self.view.user_input_entry.bind("<FocusIn>", self.on_entry_focus_in)
++        self.view.user_input_entry.bind("<FocusOut>", self.on_entry_focus_out)
++
++    def on_button_enter(self, event):
++        """鼠标进入按钮"""
++        if self.view.img_send_hover:
++            self.view.send_button.config(image=self.view.img_send_hover)
++
++    def on_button_leave(self, event):
++        """鼠标离开按钮"""
++        if self.view.img_send_normal:
++            self.view.send_button.config(image=self.view.img_send_normal)
+ 
++    def on_button_press(self, event):
++        """鼠标按下按钮"""
++        if self.view.img_send_press:
++            self.view.send_button.config(image=self.view.img_send_press)
+ 
+-    def eventFilter(self, obj, event):
+-        if obj == self.view.send_button:
+-            if event.type() == QEvent.Enter and not self.view.img_send_hover.isNull():
+-                self.view.send_button.setIcon(QIcon(self.view.img_send_hover))
+-            elif event.type() == QEvent.Leave and not self.view.img_send_normal.isNull():
+-                self.view.send_button.setIcon(QIcon(self.view.img_send_normal))
+-            elif event.type() == QEvent.MouseButtonPress and not self.view.img_send_press.isNull():
+-                self.view.send_button.setIcon(QIcon(self.view.img_send_press))
+-            elif event.type() == QEvent.MouseButtonRelease:
+-                if self.view.send_button.rect().contains(event.pos()) and not self.view.img_send_hover.isNull():
+-                    self.view.send_button.setIcon(QIcon(self.view.img_send_hover))
+-                elif not self.view.img_send_normal.isNull():
+-                    self.view.send_button.setIcon(QIcon(self.view.img_send_normal))
+-        elif obj == self.view.chat_display.viewport() and event.type() == QEvent.Wheel:
+-            delta = event.angleDelta().y()
+-            bar = self.view.chat_display.verticalScrollBar()
+-            bar.setValue(bar.value() - delta)
+-            return True
+-        elif obj == self.view.user_input_entry:
+-            if event.type() == QEvent.FocusIn:
+-                self.on_entry_focus_in()
+-            elif event.type() == QEvent.FocusOut:
+-                self.on_entry_focus_out()
+-        return super().eventFilter(obj, event)
++    def on_button_release(self, event):
++        """鼠标释放（恢复到悬停状态）"""
++        # 检查鼠标当前是否还在按钮上
++        x, y = event.x, event.y
++        if 0 <= x < self.view.send_button.winfo_width() and 0 <= y < self.view.send_button.winfo_height():
++            if self.view.img_send_hover:
++                self.view.send_button.config(image=self.view.img_send_hover)
++        else:
++            if self.view.img_send_normal:
++                self.view.send_button.config(image=self.view.img_send_normal)
+ 
+-    def on_input_enter(self):
+-        self.on_send_click()
++    def on_input_enter(self, event):
+ 
++        return self.on_send_click(event)
++
++    def on_listbox_scroll(self, event):
++        """处理笔记列表的鼠标滚轮事件。"""
++        # event.delta 在Windows上通常是120的倍数（上滚为正，下滚为负）
++        # 在Linux上，我们通过event.num来判断，4是上滚，5是下滚
++        if event.num == 4 or event.delta > 0:
++            self.view.note_listbox.yview_scroll(-1, "units")
++        elif event.num == 5 or event.delta < 0:
++            self.view.note_listbox.yview_scroll(1, "units")
++
++    def on_chat_scroll(self, event):
++        """处理聊天显示框的鼠标滚轮事件。"""
++        # 原理同上
++        if event.num == 4 or event.delta > 0:
++            self.view.chat_display.yview_scroll(-1, "units")
++        elif event.num == 5 or event.delta < 0:
++            self.view.chat_display.yview_scroll(1, "units")
+ 
+     def add_placeholder(self):
+         """添加占位提示文本"""
+-        self.view.user_input_entry.setPlaceholderText(self.placeholder_text)
++        self.view.user_input_entry.insert(0, self.placeholder_text)
++        self.view.user_input_entry.config(fg='grey')
+ 
+     def remove_placeholder(self):
+         """移除占位提示文本"""
+-        self.view.user_input_entry.setPlaceholderText("")
++        self.view.user_input_entry.delete(0, 'end')
++        self.view.user_input_entry.config(fg=self.view.gui_config.FG_TEXT)  # 恢复正常的文字颜色
+ 
+     def on_entry_focus_in(self, event):
+         """当输入框获得焦点时触发"""
+         # 如果当前显示的是提示文本，就清空它
+-        if self.view.user_input_entry.text() == "":
++        if self.view.user_input_entry.get() == self.placeholder_text:
+             self.remove_placeholder()
+ 
+     def on_entry_focus_out(self, event):
+         """当输入框失去焦点时触发"""
+         # 如果输入框里什么都没有，就重新显示提示文本
+-        if not self.view.user_input_entry.text():
+-            self.add_placeholder()
+-
+-
++        if not self.view.user_input_entry.get():
++            self.add_placeholder()
+\ No newline at end of file
+Index: nana_2/main.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># /nana_2/main.py\r\n\r\n# =================== 新增的“开天辟地”代码 ===================\r\nimport sys\r\nimport os\r\n\r\n# 动态地将项目根目录(nana_2)的父级目录添加到Python的模块搜索路径中\r\n# 这样无论从哪里启动，都能正确找到所有模块\r\nproject_root = os.path.dirname(os.path.abspath(__file__))\r\n# F:\\...\\nana_2\r\nif project_root not in sys.path:\r\n    sys.path.insert(0, project_root)\r\n\r\n# 现在Python的“通讯录”里已经有了我们项目的地址，下面的导入将万无一失\r\n# =============================================================\r\n\r\nfrom core.log.logger_config import logger\r\nfrom PySide6.QtWidgets import QApplication\r\nimport threading\r\nfrom Gui.windows.main_window import MainWindow\r\nfrom IntentDetector.main_detector import MainDetector\r\nfrom CommandExecutor.cmd_main import CommandExecutor\r\n\r\n\r\n# 【注意】: 下面的 AppController 和 if __name__ == \"__main__\": 部分，\r\n# 和我上次发给你的完全一样，保持不变即可！\r\n\r\nclass AppController:\r\n    \"\"\"\r\n    应用程序的总司令。\r\n    负责初始化所有核心模块，并协调它们之间的工作。\r\n    \"\"\"\r\n\r\n    def __init__(self):\r\n        self.view = None\r\n        # 【注意】这里的导入现在会因为上面的 sys.path 修改而正常工作\r\n        from IntentDetector.main_detector import MainDetector\r\n        from CommandExecutor.cmd_main import CommandExecutor\r\n        # 1. 首先，创建“命令执行器”实例，它会立刻加载所有插件\r\n        self.executor = CommandExecutor()\r\n\r\n        # 2. 然后，创建“意图检测器”实例，并把刚才创建的执行器“注入”给它\r\n        self.detector = MainDetector(command_executor=self.executor)\r\n\r\n        # --- 接线完成！现在它们俩已经成功关联啦！---\r\n\r\n        self.conversation_history = []\r\n\r\n    def set_view(self, view: MainWindow):\r\n        \"\"\"让控制器能够访问到GUI实例，以便操作UI队列。\"\"\"\r\n        self.view = view\r\n\r\n    def start_app(self):\r\n        \"\"\"应用启动时，由 main 函数调用。\"\"\"\r\n        welcome_msg = (\"Nana酱\", \"主人，所有模块已连接，大脑已上线！请下达指令吧！\", \"nana_sender\")\r\n        self.view.ui_queue.put((\"APPEND_MESSAGE\", welcome_msg))\r\n\r\n    def process_user_input(self, user_text: str):\r\n        \"\"\"这是从GUI的EventHandler接收用户输入的唯一入口。\"\"\"\r\n        user_msg = (\"你\", user_text, \"user_sender\")\r\n        self.view.ui_queue.put((\"APPEND_MESSAGE\", user_msg))\r\n        self.conversation_history.append({\"role\": \"user\", \"content\": user_text})\r\n        thread = threading.Thread(target=self._run_backend_process)\r\n        thread.daemon = True\r\n        thread.start()\r\n\r\n    def _run_backend_process(self):\r\n        \"\"\"运行所有后端逻辑（检测、执行），这个方法在子线程中被调用。\"\"\"\r\n        self.view.ui_queue.put((\"SET_STATE\", \"disabled\"))\r\n        command = self.detector.detect_and_parse(self.conversation_history)\r\n        ai_response = command.get(\"response\")\r\n        if ai_response:\r\n            response_msg = (\"Nana酱\", ai_response, \"nana_sender\")\r\n            self.view.ui_queue.put((\"APPEND_MESSAGE\", response_msg))\r\n            self.conversation_history.append({\"role\": \"assistant\", \"content\": ai_response})\r\n        self.executor.execute_command(command, self)\r\n        self.view.ui_queue.put((\"SET_STATE\", \"enabled\"))\r\n\r\n    def on_app_exit(self):\r\n        \"\"\"当GUI关闭时被调用\"\"\"\r\n        logger.info(\"[总司令] 收到关闭信号，应用即将退出。\")\r\n\r\n\r\n# --- 程序主入口 ---\r\nif __name__ == \"__main__\":\r\n    try:\r\n        from ctypes import windll\r\n\r\n        windll.shcore.SetProcessDpiAwareness(1)\r\n    except:\r\n        pass\r\n\r\n    # 为了让上面的 sys.path 修改能对所有模块生效，\r\n    # 我们把原来在顶部的 import 移到这里来\r\n    from Gui.windows.main_window import MainWindow\r\n\r\n    app = QApplication(sys.argv)\r\n    controller = AppController()\r\n    main_view = MainWindow(controller)\r\n    controller.set_view(main_view)\r\n\r\n    # 删除了原来的 controller.start_app()，因为AppController的__init__里并没有这个方法\r\n    # 启动逻辑应该由AppController自己管理，或者由一个更上层的逻辑调用\r\n    # 在这里，我们让MainWindow的初始化去触发start_app\r\n    main_view.master.after(100, controller.start_app)\r\n\r\n    main_view.show()\r\n    sys.exit(app.exec())\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/nana_2/main.py b/nana_2/main.py
+--- a/nana_2/main.py	(revision 4c9c72e18c83ce5800dea2a1268094eab1ba14ab)
++++ b/nana_2/main.py	(date 1751870558401)
+@@ -15,7 +15,7 @@
+ # =============================================================
+ 
+ from core.log.logger_config import logger
+-from PySide6.QtWidgets import QApplication
++import tkinter as tk
+ import threading
+ from Gui.windows.main_window import MainWindow
+ from IntentDetector.main_detector import MainDetector
+@@ -94,9 +94,9 @@
+     # 我们把原来在顶部的 import 移到这里来
+     from Gui.windows.main_window import MainWindow
+ 
+-    app = QApplication(sys.argv)
++    root = tk.Tk()
+     controller = AppController()
+-    main_view = MainWindow(controller)
++    main_view = MainWindow(root, controller)
+     controller.set_view(main_view)
+ 
+     # 删除了原来的 controller.start_app()，因为AppController的__init__里并没有这个方法
+@@ -104,5 +104,4 @@
+     # 在这里，我们让MainWindow的初始化去触发start_app
+     main_view.master.after(100, controller.start_app)
+ 
+-    main_view.show()
+-    sys.exit(app.exec())
++    root.mainloop()
+\ No newline at end of file
