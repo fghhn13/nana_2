@@ -25,3 +25,18 @@ It uses OpenAI's API via DashScope for natural language command recognition and 
    ```
 
 The GUI will launch and connect to the AI service.  Plugins are loaded from the `nana_2/plugins` directory.
+
+## Plugin Interface
+
+To extend Nana 2, create a folder under `nana_2/plugins` and implement a
+Python module exposing a `get_plugin()` function. This function must return an
+instance of a class inheriting from `BasePlugin`.
+
+Each plugin class should implement the following methods:
+
+* `get_name()` - return the unique identifier for the plugin
+* `get_commands()` - list of commands this plugin can execute
+* `execute(command, args, controller)` - handle the actual task
+
+`CommandExecutor` dynamically imports plugins via `get_plugin()` and registers
+their commands automatically.
