@@ -77,7 +77,9 @@ class NoteTakerPlugin(BasePlugin):
             notes = list_notes()
             if notes:
                 run_on_ui(controller, open_notes_window, notes, controller.view.master)
+
             else:
+
                 controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana", "没有找到任何笔记。", "nana_sender")))
         elif command == "search_notes":
             keyword = args.get("keyword") if args else None
