@@ -77,3 +77,12 @@ def open_notes_window(notes: list[str], master_window=None):
                 messagebox.showerror("打开失败", f"无法打开笔记 '{note_name}': {e}")
 
     listbox.bind("<Double-1>", on_open)
+
+
+def confirm_delete(note_name: str, master_window=None) -> bool:
+    """显示确认删除对话框，用户选择是或否"""
+    return messagebox.askyesno(
+        gui_config.CONFIRM_DELETE_TITLE,
+        gui_config.CONFIRM_DELETE_MESSAGE.format(note_name=note_name),
+        parent=master_window,
+    )

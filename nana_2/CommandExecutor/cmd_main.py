@@ -55,6 +55,7 @@ class CommandExecutor:
                                     f"插件 '{plugin_name}' 缺少必要方法 '{method}'"
                                 )
 
+                        plugin_instance.on_load()
                         self.plugins[plugin_instance.get_name()] = plugin_instance
                         load_intent_mapping(plugin_instance.get_name())
                         logger.info(f"  - 成功加载插件: '{plugin_instance.get_name()}'")
