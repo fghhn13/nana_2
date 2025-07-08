@@ -3,6 +3,7 @@ import os
 import importlib
 from global_config import settings
 from core.log.logger_config import logger
+from IntentDetector.intent_registry import load_intent_mapping
 
 class CommandExecutor:
     """
@@ -43,6 +44,7 @@ class CommandExecutor:
                     if hasattr(module, 'get_plugin'):
                         plugin_instance = module.get_plugin()
                         self.plugins[plugin_instance.get_name()] = plugin_instance
+                        load_intent_mapping(plugin_instance.get_name())
                         logger.info(f"  - 成功加载插件: '{plugin_instance.get_name()}'")
                 except Exception as e:
                     logger.info(f"  - 加载插件 {plugin_name} 失败: {e}")
