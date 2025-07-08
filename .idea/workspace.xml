@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="3e59f9b2-8804-4258-874c-ce8db60522c5" name="更改" comment="刷新" />
+    <list default="true" id="3e59f9b2-8804-4258-874c-ce8db60522c5" name="更改" comment="~">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -48,6 +50,7 @@
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
+    &quot;ASKED_MARK_IGNORED_FILES_AS_EXCLUDED&quot;: &quot;true&quot;,
     &quot;Python.Nana 2 Project.executor&quot;: &quot;Run&quot;,
     &quot;Python.ai_service.executor&quot;: &quot;Run&quot;,
     &quot;Python.clear_logs.executor&quot;: &quot;Run&quot;,
