@@ -5,6 +5,7 @@ import importlib
 import sys
 from global_config import settings
 from core.log.logger_config import logger
+from IntentDetector.intent_registry import load_intent_mapping
 
 class PluginManager:
     def __init__(self, app_controller):
@@ -33,7 +34,8 @@ class PluginManager:
 
             plugin_module = importlib.import_module(module_path)
             plugin_instance = plugin_module.get_plugin()
-            plugin_instance.on_load() # 调用插件自己的初始化方法
+            plugin_instance.on_load()  # 调用插件自己的初始化方法
+            load_intent_mapping(plugin_name)  # 注册该插件的意图映射
             self.plugins[plugin_name] = plugin_instance
             logger.info(f"[插件理] 成功加载插件: '{plugin_name}'")
             return True

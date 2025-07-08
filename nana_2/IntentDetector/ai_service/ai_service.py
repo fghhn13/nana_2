@@ -105,8 +105,27 @@ class AIService:
             logger.info(f"[AI服务] AI模型返回原始结果: {response_text}")
             parsed_response = json.loads(response_text)
             if not isinstance(parsed_response, dict):
-                logger.error(f"[AI服务] AI返回了非预期的格式 (类型: {type(parsed_response)})。")
+                logger.error(
+                    f"[AI服务] AI返回了非预期的格式 (类型: {type(parsed_response)})。"
+                )
                 return fallback_command
+
+            # 如果结果中缺少 plugin/command 字段，尝试基于 intent 进行映射
+            if not parsed_response.get("plugin") and "intent" in parsed_response:
+                from IntentDetector.intent_registry import get_mapping
+
+                mapping = get_mapping(parsed_response.get("intent"))
+                if mapping:
+                    plugin_name, command_name = mapping
+                    args = {}
+                    if parsed_response.get("entity"):
+                        args["title"] = parsed_response["entity"]
+                    parsed_response = {
+                        "plugin": plugin_name,
+                        "command": command_name,
+                        "args": args or None,
+                        "response": parsed_response.get("response"),
+                    }
             return parsed_response
         except json.JSONDecodeError:
             logger.error(f"[AI服务] AI未返回有效的JSON格式。收到的原始文本: '{response_text}'")
