@@ -2,6 +2,9 @@ nana_2.zip
 nana_2/Gui/images/caiji.py
 nana_2/Gui/log/nana_log.txt
 nana_2/core/log/nana.log
+nana_2/core/log/*.log
+__pycache__/
+*.pyc
 nana_2/IntentDetector/CommandParser/__init__.py
 nana_2/IntentDetector/CommandParser/Judge/__init__.py
 nana_2/IntentDetector/CommandParser/translate/__init__.py
