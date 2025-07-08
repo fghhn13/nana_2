@@ -3,5 +3,6 @@
   "read": "read_note",
   "delete": "delete_note",
   "show_notes": "list_notes",
-  "search": "search_notes"
+  "search": "search_notes",
+  "search_notes": "search_notes"
 }

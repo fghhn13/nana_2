@@ -85,12 +85,19 @@ class NoteTakerPlugin(BasePlugin):
                 return
             notes = search_notes(keyword)
             if notes:
+                note_list = "\n".join(f"- {n}" for n in notes)
+                msg = f"我找到有关于{keyword}的笔记有:\n{note_list}\n你是说哪一个？"
+                controller.view.ui_queue.put(("APPEND_MESSAGE", ("Nana", msg, "nana_sender")))
                 run_on_ui(controller, open_notes_window, notes, controller.view.master)
             else:
                 controller.view.ui_queue.put(
                     (
                         "APPEND_MESSAGE",
-                        ("Nana", f"没有找到与 '{keyword}' 相关的笔记。", "nana_sender"),
+                        (
+                            "Nana",
+                            f"没有找到与 '{keyword}' 相关的笔记。",
+                            "nana_sender",
+                        ),
                     )
                 )
         else:
