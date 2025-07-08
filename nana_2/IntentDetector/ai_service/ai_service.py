@@ -80,7 +80,15 @@ class AIService:
 
         messages = [{"role": "system", "content": prompt_config["system_prompt"]}]
         for example in prompt_config.get("examples", []):
-            messages.append({"role": "user", "content": example["user"]})
+            # 示例可能只包含單句 user，也可能是一段完整對話(conversation)
+            if "user" in example:
+                messages.append({"role": "user", "content": example["user"]})
+            elif "conversation" in example:
+                for msg in example["conversation"]:
+                    messages.append({"role": msg["role"], "content": msg["content"]})
+            else:
+                # 若例子里既無 user 也無 conversation，則跳過
+                continue
             messages.append({"role": "assistant", "content": json.dumps(example["ai"], ensure_ascii=False)})
 
         messages.extend(conversation_history)
