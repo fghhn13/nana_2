@@ -126,6 +126,9 @@ class MainWindow:
                     self.append_message(sender, message, tag)
                 elif msg_type == "SET_STATE":
                     self.set_ui_state(data)
+                elif msg_type == "RUN_FUNC":
+                    func = data
+                    func()
                 # elif msg_type == "SHOW_ERROR":
                 #     messagebox.showerror("错误", data)
                 # ... 在这里可以定义和处理更多类型的UI更新消息 ...

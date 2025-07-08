@@ -36,6 +36,8 @@ CONFIRM_SAVE_MESSAGE = "笔记 '{note_name}' 已保存！"
 ERROR_SAVE_TITLE = "保存失败"
 ERROR_SAVE_MESSAGE = "保存笔记时发生错误：{e}"
 AI_THINKING_MESSAGE = "正在思考中..." # AI思考时的提示信息
+CONFIRM_DELETE_TITLE = "确认删除"
+CONFIRM_DELETE_MESSAGE = "确定要删除笔记 '{note_name}' 吗？"
 
 #颜色
 # --- 主题颜色 ---
