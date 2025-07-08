@@ -120,6 +120,8 @@ class AIService:
                     args = {}
                     if parsed_response.get("entity"):
                         args["title"] = parsed_response["entity"]
+                    elif parsed_response.get("target"):
+                        args["title"] = parsed_response["target"]
                     parsed_response = {
                         "plugin": plugin_name,
                         "command": command_name,
