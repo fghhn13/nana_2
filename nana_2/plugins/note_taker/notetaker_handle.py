@@ -47,3 +47,23 @@ def read_note(note_name: str) -> str:
     with open(get_note_path(note_name), "r", encoding="utf-8") as f:
         return f.read()
 
+
+def search_notes(keyword: str) -> list[str]:
+    """根据关键字在标题或内容中搜索笔记"""
+    ensure_notes_folder_exists()
+    results: list[str] = []
+    keyword_lower = keyword.lower()
+    for f in os.listdir(NOTES_DIR):
+        if not f.endswith(".txt"):
+            continue
+        note_name = os.path.splitext(f)[0]
+        path = os.path.join(NOTES_DIR, f)
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                content = fh.read()
+        except Exception:
+            content = ""
+        if keyword_lower in note_name.lower() or keyword_lower in content.lower():
+            results.append(note_name)
+    return sorted(results)
+
