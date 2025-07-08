@@ -27,6 +27,8 @@ class IntentRegistryTest(unittest.TestCase):
         manager.load_plugin('note_taker')
         self.assertIn('create', intent_registry)
         self.assertEqual(intent_registry['create'], ('note_taker', 'create_note'))
+        self.assertIn('clarify_action', intent_registry)
+        self.assertEqual(intent_registry['clarify_action'], ('note_taker', 'read_note'))
 
 if __name__ == '__main__':
     unittest.main()
