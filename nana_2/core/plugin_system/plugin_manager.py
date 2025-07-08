@@ -6,6 +6,7 @@ import sys
 from global_config import settings
 from core.log.logger_config import logger
 from IntentDetector.intent_registry import load_intent_mapping
+from plugins.base_plugin import BasePlugin
 
 class PluginManager:
     def __init__(self, app_controller):
@@ -34,6 +35,19 @@ class PluginManager:
 
             plugin_module = importlib.import_module(module_path)
             plugin_instance = plugin_module.get_plugin()
+
+            if not isinstance(plugin_instance, BasePlugin):
+                raise TypeError(
+                    f"插件 '{plugin_name}' 必须继承 BasePlugin"
+                )
+
+            # 基本接口检查
+            for method in ("get_name", "get_commands", "execute"):
+                if not hasattr(plugin_instance, method):
+                    raise AttributeError(
+                        f"插件 '{plugin_name}' 缺少必要方法 '{method}'"
+                    )
+
             plugin_instance.on_load()  # 调用插件自己的初始化方法
             load_intent_mapping(plugin_name)  # 注册该插件的意图映射
             self.plugins[plugin_name] = plugin_instance

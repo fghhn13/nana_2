@@ -3,6 +3,8 @@ import os
 import importlib
 from global_config import settings
 from core.log.logger_config import logger
+from IntentDetector.intent_registry import load_intent_mapping
+from plugins.base_plugin import BasePlugin
 
 class CommandExecutor:
     """
@@ -42,7 +44,19 @@ class CommandExecutor:
                     module = importlib.import_module(f"plugins.{plugin_name}")
                     if hasattr(module, 'get_plugin'):
                         plugin_instance = module.get_plugin()
+                        if not isinstance(plugin_instance, BasePlugin):
+                            raise TypeError(
+                                f"插件 '{plugin_name}' 必须继承 BasePlugin"
+                            )
+
+                        for method in ("get_name", "get_commands", "execute"):
+                            if not hasattr(plugin_instance, method):
+                                raise AttributeError(
+                                    f"插件 '{plugin_name}' 缺少必要方法 '{method}'"
+                                )
+
                         self.plugins[plugin_instance.get_name()] = plugin_instance
+                        load_intent_mapping(plugin_instance.get_name())
                         logger.info(f"  - 成功加载插件: '{plugin_instance.get_name()}'")
                 except Exception as e:
                     logger.info(f"  - 加载插件 {plugin_name} 失败: {e}")
