@@ -29,6 +29,11 @@ class IntentRegistryTest(unittest.TestCase):
         self.assertEqual(intent_registry['create'], ('note_taker', 'create_note'))
         self.assertIn('clarify_action', intent_registry)
         self.assertEqual(intent_registry['clarify_action'], ('note_taker', 'read_note'))
+        self.assertIn('search_notes_by_keyword', intent_registry)
+        self.assertEqual(
+            intent_registry['search_notes_by_keyword'],
+            ('note_taker', 'search_notes')
+        )
 
 if __name__ == '__main__':
     unittest.main()
