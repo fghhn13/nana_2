@@ -110,5 +110,4 @@ class PluginManager:
         all_commands = {}
         for name, instance in self.plugins.items():
             for command in instance.get_commands():
-                all_commands[f"{name}.{command}"] = instance
-        return all_commands
+                all_commands[f"{name}.{command}"] = instance        return all_commands

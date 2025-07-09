@@ -20,6 +20,7 @@ import threading
 from Gui.windows.main_window import MainWindow
 from IntentDetector.main_detector import MainDetector
 from CommandExecutor.cmd_main import CommandExecutor
+from core.plugin_system.plugin_manager import PluginManager
 
 
 # 【注意】: 下面的 AppController 和 if __name__ == "__main__": 部分，
@@ -36,10 +37,16 @@ class AppController:
         # 【注意】这里的导入现在会因为上面的 sys.path 修改而正常工作
         from IntentDetector.main_detector import MainDetector
         from CommandExecutor.cmd_main import CommandExecutor
-        # 1. 首先，创建“命令执行器”实例，它会立刻加载所有插件
-        self.executor = CommandExecutor()
+        from core.plugin_system.plugin_manager import PluginManager
 
-        # 2. 然后，创建“意图检测器”实例，并把刚才创建的执行器“注入”给它
+        # 1. 创建插件管理器并加载所有插件
+        self.plugin_manager = PluginManager(self)
+        self.plugin_manager.load_all_plugins()
+
+        # 2. 创建命令执行器，让它使用 PluginManager 中的插件
+        self.executor = CommandExecutor(self.plugin_manager)
+
+        # 3. 创建意图检测器，并把执行器“注入”给它
         self.detector = MainDetector(command_executor=self.executor)
 
         # --- 接线完成！现在它们俩已经成功关联啦！---
@@ -103,5 +110,4 @@ if __name__ == "__main__":
     # 启动逻辑应该由AppController自己管理，或者由一个更上层的逻辑调用
     # 在这里，我们让MainWindow的初始化去触发start_app
     main_view.master.after(100, controller.start_app)
-
-    root.mainloop()
+    root.mainloop()
